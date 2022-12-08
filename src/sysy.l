@@ -18,8 +18,8 @@ using namespace std;
 
 /* 空白符和注释 */
 WhiteSpace    [ \t\n\r]*
-LineComment   "//".*
-BlockComment  \/\*(\s|.)*?\*\/
+LineComment   "//".*$
+BlockComment  \/\*(?:[^\*]|\*+[^\/\*])*\*+\/
 
 /* 标识符 */
 Identifier    [a-zA-Z_][a-zA-Z0-9_]*
