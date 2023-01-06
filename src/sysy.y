@@ -42,7 +42,7 @@ using namespace std;
 %token <ast_val> '=' '>' '<' '+' '-' '*' '/' '%' '!'
 
 // 非终结符的类型定义
-%type <ast_val> FuncDef FuncType Block Stmt Number Exp PrimaryExp UnaryExp UnaryOp
+%type <ast_val> FuncDef FuncType Block Stmt Number Exp PrimaryExp UnaryExp UnaryOp AddExp MulExp
 /* %type <int_val> Number */
 
 %%
@@ -107,9 +107,8 @@ Stmt
   ;
 
 Exp
-  : UnaryExp {
+  : AddExp {
     auto ast = new ExpAST();
-    ast->unaryexp = unique_ptr<BaseAST>($1);
     ast->son.push_back($1);
     $$ = ast;
   }
@@ -174,6 +173,47 @@ UnaryOp
     auto ast = new UnaryOp();
     ast->son.push_back($1);
     $$ = ast;
+  }
+  ;
+
+MulExp 
+  : UnaryExp {
+    auto ast = new MulExp();
+    ast->son.push_back($1);
+    $$ = ast;
+  }
+  | MulExp '*' UnaryExp {
+    $1->son.push_back($2);
+    $1->son.push_back($3);
+    $$ = $1;
+  }
+  | MulExp '/' UnaryExp {
+    $1->son.push_back($2);
+    $1->son.push_back($3);
+    $$ = $1;
+  }
+  | MulExp '%' UnaryExp {
+    $1->son.push_back($2);
+    $1->son.push_back($3);
+    $$ = $1;
+  }
+  ;
+
+AddExp
+  : MulExp {
+    auto ast = new AddExp();
+    ast->son.push_back($1);
+    $$ = ast;
+  }
+  | AddExp '+' MulExp {
+    $1->son.push_back($2);
+    $1->son.push_back($3);
+    $$ = $1;
+  }
+  | AddExp '-' MulExp {
+    $1->son.push_back($2);
+    $1->son.push_back($3);
+    $$ = $1;
   }
   ;
 

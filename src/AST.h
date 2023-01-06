@@ -7,9 +7,9 @@
 extern FILE *yyout;
 
 enum TYPE{
-  _UnaryExp, _PrimaryExp, _UnaryOp, _Number, _Exp, _OP, 
+  _UnaryExp, _PrimaryExp, _UnaryOp, _Number, _Exp, _OP, _AddExp, _MulExp,
 };
-extern int tmpcnt;
+extern int expNumCnt;
 
 // 所有 AST 的基类
 class BaseAST {
@@ -23,15 +23,12 @@ class BaseAST {
 
     BaseAST() = default;
     BaseAST(TYPE t): type(t){}
-    BaseAST(TYPE t, char o): type(t), op(o)
-    {
-        std::cout << "char_______op" << t << o << std::endl;
-    }
+    BaseAST(TYPE t, char o): type(t), op(o) {}
 
     virtual ~BaseAST() = default;
     virtual void Dump(std::string& str0) const = 0;
-    virtual std::string retvaltmp(std::string& str0)
-    {
+    
+    virtual std::string dump2str(std::string& str0) {
         return "";
     }
 };
@@ -39,7 +36,6 @@ class BaseAST {
 // CompUnit 是 BaseAST
 class CompUnitAST : public BaseAST {
     public:
-    // 用智能指针管理对象
     std::unique_ptr<BaseAST> func_def;
 
     void Dump(std::string& str0) const override {
@@ -127,13 +123,10 @@ class BlockAST : public  BaseAST {
         // fprintf(yyout, "\n");
         // std::cout << std::endl;
 
-        str0 += "%";
-        str0 += "entry";
-        str0 += ":\n";
-        std::cout << "%";
-        std::cout << "entry";
-        std::cout << ":"<<std::endl;
+        str0 += "\%entry:\n";
+        std::cout << "\%entry" << ":"<< std::endl;
         stmt->Dump(str0);
+
         str0 += "\n";
         std::cout << std::endl;
     }
@@ -158,165 +151,209 @@ class StmtAST : public BaseAST {
         // std::cout <<"  "<< "ret ";
         // std::cout << number;
 
-        std::string tmp = exp->retvaltmp(str0);
-        std::cout<<"asdfghjkasdfghjkasdfghj"<<std::endl;
+        std::string tmp = exp->dump2str(str0);
         str0 += " ret ";
         str0 += tmp.c_str();
-        std::cout<<str0<<std::endl;
+        std::cout << str0 << std::endl;
     }
 };
 
 class ExpAST : public BaseAST {
- public:
-  ExpAST()
-  {
-    type = _Exp;
-  }
-  std::unique_ptr<BaseAST> unaryexp;
-  char op;
-  int val;
+    public:
+    ExpAST() {
+        type = _Exp;
+    }
+    // std::unique_ptr<BaseAST> unaryexp;
+    char op;
+    int val;
   
-  void Dump(std::string& str0) const override {
-  }
+    void Dump(std::string& str0) const override {}
 
-  std::string retvaltmp(std::string& str0) override
-  {
-    std::cout<<"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"<<std::endl;
-    std::string tmp = unaryexp->retvaltmp(str0);
-    return tmp;
-  }
+    std::string dump2str(std::string& str0) override {
+        return son[0]->dump2str(str0);
+    }
 };
 
 class PrimaryExp : public BaseAST {
- public:
-  std::unique_ptr<BaseAST> exp;
-  std::unique_ptr<BaseAST> number;
-  int val;
-  char op = '+';
-  PrimaryExp()
-  {
-    type = _PrimaryExp;
-  }
-  void Dump(std::string& str0) const override {
-  }
+    public:
+    std::unique_ptr<BaseAST> exp;
+    std::unique_ptr<BaseAST> number;
+    int val;
+    char op = '+';
+    PrimaryExp() {
+        type = _PrimaryExp;
+    }
+    void Dump(std::string& str0) const override {}
 };
 
 class Number : public BaseAST {
- public:
+    public:
 
-  Number()
-  {
-    type = _Number;
-  }
+    Number() {
+        type = _Number;
+    }
 
-
-  void Dump(std::string& str0) const override {
-  }
+    void Dump(std::string& str0) const override {}
 };
 
 class UnaryExp : public BaseAST {
- public:
-  std::unique_ptr<BaseAST> primaryexp;
-  std::unique_ptr<BaseAST> unaryop;
-  std::unique_ptr<BaseAST> unaryexp;
-  int val;
-  char op;
-  int cnt1;
-  int cnt2;
+    public:
+    std::unique_ptr<BaseAST> primaryexp;
+    std::unique_ptr<BaseAST> unaryop;
+    std::unique_ptr<BaseAST> unaryexp;
+    int val;
+    char op;
+    int cnt1;
+    int cnt2;
   
-  UnaryExp()
-  {
-    type = _UnaryExp;
-  }
-  
-  void Dump(std::string& str0) const override {
-  }
-
-
-  std::string retvaltmp(std::string& str0) override {
-    std::cout<<"11111111"<<std::endl;
-    std::string tmp1;
-    std::string tmp2;
-    if(son[0]->type == _PrimaryExp)
-    {
-      std::cout<<"a11111111"<<std::endl;
-      BaseAST* ptr = son[0]; 
-      if(ptr->son[0]->type == _Number)
-      {
-        std::cout<<"aa11111111"<<std::endl;
-        tmp1 = std::to_string(son[0]->son[0]->val);
-      }else if(ptr->son[0]->type == _Exp)
-      {
-        std::cout<<"ab11111111"<<std::endl;
-        
-        tmp1 = ptr->son[0]->retvaltmp(str0);
-      }
-    }else if (son[0]->type == _UnaryOp)
-    {
-      std::cout<<"b11111111"<<std::endl;
-      std::cout<<son[0]->op<<std::endl;
-      std::cout<<son[0]->son[0]->op<<std::endl;
-      if(son[0]->son[0]->op == '-')
-      {
-        std::cout<<"c11111111"<<std::endl;
-        tmp2 = son[1]->retvaltmp(str0);
-        tmp1 = "%" + std::to_string(tmpcnt);
-        tmpcnt++;
-        
-        str0 += " ";
-        str0 += tmp1.c_str();
-        str0 += " = ";
-        str0 += "sub ";
-        str0 += "0, ";
-        str0 += tmp2.c_str();
-        str0 += "\n";
-        std::cout<<str0<<std::endl;
-      }else if (son[0]->son[0]->op == '!')
-      {
-        std::cout<<"d11111111"<<std::endl;
-        tmp2 = son[1]->retvaltmp(str0);
-        tmp1 = "%" + std::to_string(tmpcnt);
-        tmpcnt++;
-        
-        str0 += " ";
-        str0 += tmp1.c_str();
-        str0 += " = ";
-        str0 += "eq ";
-        str0 += "0, ";
-        str0 += tmp2.c_str();
-        str0 += "\n";
-        std::cout<<str0<<std::endl;
-      }else if (son[0]->son[0]->op == '+')
-      {
-        std::cout<<"e11111111"<<std::endl;
-        tmp1 = son[1]->retvaltmp(str0);
-      }else
-      {
-        std::cout<<"wrong_op_type"<<std::endl;
-      }
+    UnaryExp() {
+        type = _UnaryExp;
     }
-    return tmp1;
-  }
+  
+    void Dump(std::string& str0) const override {}
+
+    std::string dump2str(std::string& str0) override {
+        std::string tmp1, tmp2;
+        if(son[0]->type == _PrimaryExp)
+        {
+            BaseAST* ptr = son[0]; 
+            if(ptr->son[0]->type == _Number)
+                tmp1 = std::to_string(son[0]->son[0]->val);
+            else if(ptr->son[0]->type == _Exp)
+                tmp1 = ptr->son[0]->dump2str(str0);
+        }
+
+        else if (son[0]->type == _UnaryOp)
+        {
+            std::cout << son[0]->op << std::endl;
+            std::cout << son[0]->son[0]->op << std::endl;
+            if(son[0]->son[0]->op == '-' || son[0]->son[0]->op == '!')
+            {
+                tmp2 = son[1]->dump2str(str0);
+                tmp1 = "%" + std::to_string(expNumCnt++);
+                str0 += " ";
+                str0 += tmp1.c_str();
+                str0 += " = ";
+
+                if (son[0]->son[0]->op == '-')
+                    str0 += "sub ";
+                else str0 += "eq ";
+
+                str0 += "0, ";
+                str0 += tmp2.c_str();
+                str0 += "\n";
+                std::cout << str0 << std::endl;
+            }
+            else if (son[0]->son[0]->op == '+')
+                tmp1 = son[1]->dump2str(str0);
+
+            else {
+                std::cout << "wrong_op_type" << std::endl;
+            }
+        }
+        return tmp1;
+    }
 };
 
 class UnaryOp : public BaseAST {
-  public:
-  // char op;
-  UnaryOp()
-  {
-    type = _UnaryOp;
-  }
-  void Dump(std::string& str0) const override {
-    
-  }
+    public:
+    UnaryOp()
+    {
+        type = _UnaryOp;
+    }
+    void Dump(std::string& str0) const override {}
 };
 
 
 class Op : public BaseAST {
-  public:
-  Op(TYPE t, char o):BaseAST(t,o){}
-  // char op;
-  void Dump(std::string& str0) const override {
-   
-  }
+    public:
+    Op(TYPE t, char o):BaseAST(t,o){}
+    // char op;
+    void Dump(std::string& str0) const override {}
+};
+
+
+class AddExp : public BaseAST {
+    public:
+    AddExp(){
+        type = _AddExp;
+    }
+
+    void Dump(std::string& str0) const override {}
+    std::string dump2str(std::string& str0) override 
+    {
+        if (son.size() == 1)
+            return son[0]->dump2str(str0);
+        std::string tmp1, tmp2, tmp3;
+        tmp1 = "%" + std::to_string(expNumCnt++);
+
+        for(int i = 1; i < son.size(); i += 2)
+        {
+            if (i == 1)
+                tmp2 = son[0]->dump2str(str0);
+            else tmp2 = tmp1;
+
+            tmp3 = son[i + 1]->dump2str(str0);
+
+            str0 += " ";
+            str0 += tmp1;
+            str0 += " = ";
+
+            if (son[i]->op == '+')
+                str0 += "add";
+            else if (son[i]->op == '-')
+                str0 += "sub";
+                
+            str0 += " ";
+            str0 += tmp2;
+            str0 += ", ";
+            str0 += tmp3;
+            str0 += "\n";
+
+            std::cout << str0 << std::endl;
+        }
+        return tmp1;
+    }
+};
+
+class MulExp : public BaseAST {
+    public:
+    MulExp() {  type = _MulExp; }
+    void Dump(std::string& str0) const override {}
+
+    std::string dump2str(std::string& str0) override 
+    {
+        if (son.size() == 1)
+            return son[0]->dump2str(str0);
+        std::string tmp1, tmp2, tmp3;
+        tmp1 = "%" + std::to_string(expNumCnt++);
+
+        for(int i = 1; i < son.size(); i += 2)
+        {
+            if (i == 1)
+                tmp2 = son[0]->dump2str(str0);
+            else tmp2 = tmp1;
+            tmp3 = son[i + 1]->dump2str(str0);
+
+            str0 += " ";
+            str0 += tmp1;
+            str0 += " = ";
+
+            if (son[i]->op == '*')
+                str0 += "mul";
+            else if (son[i]->op == '/')
+                str0 += "div";
+            else if (son[i]->op == '%')
+                str0 += "mod";
+                
+            str0 += " ";
+            str0 += tmp2;
+            str0 += ", ";
+            str0 += tmp3;
+            str0 += "\n";
+
+            std::cout << str0 << std::endl;
+        }
+        return tmp1;
+    }
 };

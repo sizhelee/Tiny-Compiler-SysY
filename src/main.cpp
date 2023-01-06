@@ -20,7 +20,7 @@ using namespace std;
 // 看起来会很烦人, 于是干脆采用这种看起来 dirty 但实际很有效的手段
 extern FILE *yyin, *yyout;
 extern int yyparse(unique_ptr<BaseAST> &ast);
-int tmpcnt = 0;
+int expNumCnt = 0;
 
 // 函数声明略
 void Visit(const koopa_raw_program_t &program);
