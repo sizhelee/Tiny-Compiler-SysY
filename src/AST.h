@@ -33,18 +33,18 @@ class BaseAST {
     }
 };
 
+
 // CompUnit 是 BaseAST
 class CompUnitAST : public BaseAST {
     public:
     std::unique_ptr<BaseAST> func_def;
 
     void Dump(std::string& str0) const override {
-        // std::cout << "CompUnitAST { ";
         str0 = "";
         func_def->Dump(str0);
-        // std::cout << " }";
     }
 };
+
 
 // FuncDef 也是 BaseAST
 class FuncDefAST : public BaseAST {
@@ -54,28 +54,12 @@ class FuncDefAST : public BaseAST {
     std::unique_ptr<BaseAST> block;
 
     void Dump(std::string& str0) const override {
-        // // std::cout << "FuncDefAST { ";
-        // // func_type->Dump();
-        // // std::cout << ", " << ident << ", ";
-        // // block->Dump();
-        // // std::cout << " }";
-        // fprintf(yyout, "fun @");
-        // std::cout << "fun @";
-        // fprintf(yyout, ident.c_str());
-        // fprintf(yyout, "(): ");
-        // std::cout << ident << "(): ";
-        // func_type->Dump();
-        // fprintf(yyout, " { \n");
-        // std::cout << " { "<< std::endl;
-        // block->Dump();
-        // fprintf(yyout, "}");
-        // std::cout << "}";
         str0 += "fun @";
         str0 += ident;
         str0 += "(): ";
-        std::cout << "fun @";
-        std::cout << ident << "(): ";
+        std::cout << "fun @" << ident << "(): ";
         func_type->Dump(str0);
+
         str0 += " { \n";
         std::cout << " { "<<std::endl;
         block->Dump(str0);
@@ -84,6 +68,7 @@ class FuncDefAST : public BaseAST {
     }
 };
 
+
 class FuncTypeAST : public BaseAST {
     public:
     std::string func_type;
@@ -91,40 +76,21 @@ class FuncTypeAST : public BaseAST {
     void Dump(std::string& str0) const override {
         if(func_type == "int")
         {
-            // std::cout << "FuncTypeAST { ";
-            // std::cout << "int";
-            // std::cout << " }";
-
-            // fprintf(yyout, "i32");
-            // std::cout << "i32";
-
             str0 += "i32";
             std::cout << "i32";
         }
     }
 };
 
+
 class BlockAST : public  BaseAST {
     public:
     std::unique_ptr<BaseAST> stmt;
 
     void Dump(std::string& str0) const override {
-        // std::cout << "BlockAST { ";
-        // stmt->Dump();
-        // std::cout << " }";
-        
-        // fprintf(yyout, "%%");
-        // fprintf(yyout, "entry");
-        // fprintf(yyout, ":\n");
-        // std::cout << "%";
-        // std::cout << "entry";
-        // std::cout << ":"<<std::endl;
-        // stmt->Dump(str0);
-        // fprintf(yyout, "\n");
-        // std::cout << std::endl;
-
         str0 += "\%entry:\n";
-        std::cout << "\%entry" << ":"<< std::endl;
+        std::cout << "\%entry" << ":" << std::endl;
+
         stmt->Dump(str0);
 
         str0 += "\n";
@@ -132,31 +98,19 @@ class BlockAST : public  BaseAST {
     }
 };
 
+
 class StmtAST : public BaseAST {
     public:
     std::unique_ptr<BaseAST> exp;
 
     void Dump(std::string& str0) const override {
-        // std::cout << "StmtAST { ";
-        // std::cout << number;
-        // std::cout << " }";
-        
-        // fprintf(yyout, "  ret ");
-        // fprintf(yyout, std::to_string(number).c_str());
-        // std::cout <<"  "<< "ret ";
-        // std::cout << number;
-
-        // str0 += " ret ";
-        // str0 += std::to_string(number).c_str();
-        // std::cout <<"  "<< "ret ";
-        // std::cout << number;
-
         std::string tmp = exp->dump2str(str0);
         str0 += " ret ";
-        str0 += tmp.c_str();
+        str0 += tmp;
         std::cout << str0 << std::endl;
     }
 };
+
 
 class ExpAST : public BaseAST {
     public:
@@ -174,6 +128,7 @@ class ExpAST : public BaseAST {
     }
 };
 
+
 class PrimaryExp : public BaseAST {
     public:
     std::unique_ptr<BaseAST> exp;
@@ -186,6 +141,7 @@ class PrimaryExp : public BaseAST {
     void Dump(std::string& str0) const override {}
 };
 
+
 class Number : public BaseAST {
     public:
 
@@ -195,6 +151,7 @@ class Number : public BaseAST {
 
     void Dump(std::string& str0) const override {}
 };
+
 
 class UnaryExp : public BaseAST {
     public:
@@ -255,6 +212,7 @@ class UnaryExp : public BaseAST {
     }
 };
 
+
 class UnaryOp : public BaseAST {
     public:
     UnaryOp()
@@ -285,15 +243,21 @@ class AddExp : public BaseAST {
         if (son.size() == 1)
             return son[0]->dump2str(str0);
         std::string tmp1, tmp2, tmp3;
-        tmp1 = "%" + std::to_string(expNumCnt++);
 
         for(int i = 1; i < son.size(); i += 2)
         {
-            if (i == 1)
-                tmp2 = son[0]->dump2str(str0);
-            else tmp2 = tmp1;
-
             tmp3 = son[i + 1]->dump2str(str0);
+
+            if (i == 1)
+            {
+                tmp2 = son[0]->dump2str(str0);
+                tmp1 = "%" + std::to_string(expNumCnt++);
+            }
+            else
+            {
+                tmp1 = "%" + std::to_string(expNumCnt++);
+                tmp2 = tmp1;
+            }
 
             str0 += " ";
             str0 += tmp1;
@@ -316,6 +280,7 @@ class AddExp : public BaseAST {
     }
 };
 
+
 class MulExp : public BaseAST {
     public:
     MulExp() {  type = _MulExp; }
@@ -326,14 +291,21 @@ class MulExp : public BaseAST {
         if (son.size() == 1)
             return son[0]->dump2str(str0);
         std::string tmp1, tmp2, tmp3;
-        tmp1 = "%" + std::to_string(expNumCnt++);
 
         for(int i = 1; i < son.size(); i += 2)
         {
-            if (i == 1)
-                tmp2 = son[0]->dump2str(str0);
-            else tmp2 = tmp1;
             tmp3 = son[i + 1]->dump2str(str0);
+            
+            if (i == 1)
+            {
+                tmp2 = son[0]->dump2str(str0);
+                tmp1 = "%" + std::to_string(expNumCnt++);
+            }
+            else
+            {
+                tmp1 = "%" + std::to_string(expNumCnt++);
+                tmp2 = tmp1;
+            }
 
             str0 += " ";
             str0 += tmp1;
