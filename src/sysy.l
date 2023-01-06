@@ -23,6 +23,7 @@ BlockComment  \/\*(?:[^\*]|\*+[^\/\*])*\*+\/
 
 /* 标识符 */
 Identifier    [a-zA-Z_][a-zA-Z0-9_]*
+Operator      "+"|"-"|"*"|"/"|"="|">"|"<"|"%"|"!"
 
 /* 整数字面量 */
 Decimal       [1-9][0-9]*
@@ -43,6 +44,7 @@ Hexadecimal   0[xX][0-9a-fA-F]+
 {Decimal}       { yylval.int_val = strtol(yytext, nullptr, 0); return INT_CONST; }
 {Octal}         { yylval.int_val = strtol(yytext, nullptr, 0); return INT_CONST; }
 {Hexadecimal}   { yylval.int_val = strtol(yytext, nullptr, 0); return INT_CONST; }
+{Operator}      { auto ast = new Op(_OP, yytext[0]); yylval.ast_val = ast; return yytext[0]; }
 
 .               { return yytext[0]; }
 

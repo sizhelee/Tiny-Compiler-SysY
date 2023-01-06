@@ -9,6 +9,8 @@
 #include "koopa.h"
 #include "util.h"
 
+#define DEBUGMODE 1
+
 using namespace std;
 
 // 声明 lexer 的输入, 以及 parser 函数
@@ -18,6 +20,7 @@ using namespace std;
 // 看起来会很烦人, 于是干脆采用这种看起来 dirty 但实际很有效的手段
 extern FILE *yyin, *yyout;
 extern int yyparse(unique_ptr<BaseAST> &ast);
+int tmpcnt = 0;
 
 // 函数声明略
 void Visit(const koopa_raw_program_t &program);
@@ -27,10 +30,14 @@ void Visit(const koopa_raw_basic_block_t &bb);
 void Visit(const koopa_raw_value_t &value);
 void Visit(const koopa_raw_return_t &ret);
 void Visit(const koopa_raw_integer_t &integer);
+void Visit(const koopa_raw_binary_t &binary);
 
 // 访问 raw program
 void Visit(const koopa_raw_program_t &program) {
   // 执行一些其他的必要操作
+  # if DEBUGMODE
+    cout << "******** visit program ********" << endl;
+  # endif
   myPrint("  .text ");
 
   for (size_t i = 0; i < program.values.len; ++i) {
@@ -53,7 +60,7 @@ void Visit(const koopa_raw_program_t &program) {
       koopa_raw_function_t func = (koopa_raw_function_t) program.funcs.buffer[i];
 
       // 进一步处理当前函数
-      cout << func->name << endl;
+      // cout << "*******" << func->name << "*******" << endl;
       for(int i = 1; i < strlen(func->name); i++)
       {
         char c = func->name[i]; 
@@ -62,6 +69,7 @@ void Visit(const koopa_raw_program_t &program) {
       }
       // fprintf(yyout, "%s",func->name);
       fprintf(yyout, "\n");
+      cout << endl;
   }
 
   // 访问所有全局变量
@@ -72,19 +80,22 @@ void Visit(const koopa_raw_program_t &program) {
 
 // 访问 raw slice
 void Visit(const koopa_raw_slice_t &slice) {
+  # if DEBUGMODE
+    cout << "******** visit slice, kind: " << slice.kind << " ********" << endl;
+  # endif
   for (size_t i = 0; i < slice.len; ++i) {
     auto ptr = slice.buffer[i];
     // 根据 slice 的 kind 决定将 ptr 视作何种元素
     switch (slice.kind) {
-      case KOOPA_RSIK_FUNCTION:
+      case KOOPA_RSIK_FUNCTION: // 2
         // 访问函数
         Visit(reinterpret_cast<koopa_raw_function_t>(ptr));
         break;
-      case KOOPA_RSIK_BASIC_BLOCK:
+      case KOOPA_RSIK_BASIC_BLOCK: // 3
         // 访问基本块
         Visit(reinterpret_cast<koopa_raw_basic_block_t>(ptr));
         break;
-      case KOOPA_RSIK_VALUE:
+      case KOOPA_RSIK_VALUE: // 4
         // 访问指令
         Visit(reinterpret_cast<koopa_raw_value_t>(ptr));
         break;
@@ -97,6 +108,9 @@ void Visit(const koopa_raw_slice_t &slice) {
 
 // 访问函数
 void Visit(const koopa_raw_function_t &func) {
+  # if DEBUGMODE
+    cout << "******** visit function ********" << endl;
+  # endif
   // 执行一些其他的必要操作
   // ...
   for(int i = 1; i < strlen(func->name);i++)
@@ -105,15 +119,16 @@ void Visit(const koopa_raw_function_t &func) {
     cout<<c;
     fprintf(yyout, "%c",c);
   }
-  cout<<":"<<endl;
-  fprintf(yyout, ":");
-  fprintf(yyout, "\n");
+  myPrint(":");
   // 访问所有基本块
   Visit(func->bbs);
 }
 
 // 访问基本块
 void Visit(const koopa_raw_basic_block_t &bb) {
+  # if DEBUGMODE
+    cout << "******** visit block ********" << endl;
+  # endif
   // 执行一些其他的必要操作
   // ...
   // 访问所有指令
@@ -122,6 +137,9 @@ void Visit(const koopa_raw_basic_block_t &bb) {
 
 // 访问指令
 void Visit(const koopa_raw_value_t &value) {
+  # if DEBUGMODE
+    cout << "******** visit value ********" << endl;
+  # endif
   // 根据指令类型判断后续需要如何访问
   const auto &kind = value->kind;
   switch (kind.tag) {
@@ -133,6 +151,10 @@ void Visit(const koopa_raw_value_t &value) {
       // 访问 integer 指令
       Visit(kind.data.integer);
       break;
+    case KOOPA_RVT_BINARY:
+      cout<<"KOOPA_RVT_BINARY"<<endl;
+      Visit(kind.data.binary);
+      break;
     default:
       // 其他类型暂时遇不到
       assert(false);
@@ -140,6 +162,9 @@ void Visit(const koopa_raw_value_t &value) {
 }
 
 void Visit(const koopa_raw_return_t &ret) {
+  # if DEBUGMODE
+    cout << "******** visit return ********" << endl;
+  # endif
 
   cout<<"li a0, ";
   cout<<ret.value->kind.data.integer.value<<endl;
@@ -153,8 +178,20 @@ void Visit(const koopa_raw_return_t &ret) {
 }
 
 void Visit(const koopa_raw_integer_t &integer) {
+  # if DEBUGMODE
+    cout << "******** visit integer ********" << endl;
+  # endif
   cout<<integer.value<<endl;
 }
+
+void Visit(const koopa_raw_binary_t &binary) {
+  # if DEBUGMODE
+    cout << "******** visit binary ********" << endl;
+  # endif
+  cout<<binary.op<<endl;
+  cout<<binary.lhs->kind.tag<<endl;
+}
+
 
 int main(int argc, const char *argv[]) {
   // 解析命令行参数. 测试脚本/评测平台要求你的编译器能接收如下参数:

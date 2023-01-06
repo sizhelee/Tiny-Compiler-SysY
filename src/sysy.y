@@ -39,10 +39,11 @@ using namespace std;
 %token INT RETURN
 %token <str_val> IDENT
 %token <int_val> INT_CONST
+%token <ast_val> '=' '>' '<' '+' '-' '*' '/' '%' '!'
 
 // 非终结符的类型定义
-%type <ast_val> FuncDef FuncType Block Stmt
-%type <int_val> Number
+%type <ast_val> FuncDef FuncType Block Stmt Number Exp PrimaryExp UnaryExp UnaryOp
+/* %type <int_val> Number */
 
 %%
 
@@ -98,16 +99,81 @@ Block
   ;
 
 Stmt
-  : RETURN Number ';' {
+  : RETURN Exp ';' {
     auto ast = new StmtAST();
-    ast->number = $2;
+    ast->exp = unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+  ;
+
+Exp
+  : UnaryExp {
+    auto ast = new ExpAST();
+    ast->unaryexp = unique_ptr<BaseAST>($1);
+    ast->son.push_back($1);
+    $$ = ast;
+  }
+  ;
+
+PrimaryExp
+  : '(' Exp ')' {
+    auto ast = new PrimaryExp();
+    ast->exp = unique_ptr<BaseAST>($2);
+    ast->son.push_back($2);
+    $$ = ast;
+  }
+  | Number {
+    auto ast = new PrimaryExp();
+    ast->number = unique_ptr<BaseAST>($1);
+    ast->son.push_back($1);
     $$ = ast;
   }
   ;
 
 Number
   : INT_CONST {
-    $$ = $1;
+    auto ast = new Number();
+    ast->val = $1;
+    ast->isint = true;
+    $$ = ast;
+  }
+  ;
+
+UnaryExp 
+  : PrimaryExp{
+    auto ast = new UnaryExp();
+    ast->primaryexp = unique_ptr<BaseAST>($1);
+    ast->val = $1->val;
+    ast->isint = $1->isint;
+    ast->son.push_back($1);
+    $$ = ast;
+  }
+  | UnaryOp UnaryExp{
+    auto ast = new UnaryExp();
+    ast->unaryop = unique_ptr<BaseAST>($1);
+    ast->unaryexp = unique_ptr<BaseAST>($2);
+    ast->son.push_back($1);
+    ast->son.push_back($2);
+    $$ = ast;
+  }
+  ;
+
+UnaryOp
+  : '+'{
+    auto ast = new UnaryOp();
+    ast->son.push_back($1);
+    std::cout<<"ast->type"<<ast->son[0]->op<<std::endl;
+    $$ = ast;  
+  }
+  | '-'{
+    auto ast = new UnaryOp();
+    ast->son.push_back($1);
+    $$ = ast;  
+  }
+  | '!'{
+    auto ast = new UnaryOp();
+    ast->son.push_back($1);
+    $$ = ast;
   }
   ;
 
