@@ -33,6 +33,9 @@ class BaseAST {
     virtual std::string dump2str(std::string& str0) {
         return "";
     }
+    virtual std::string eqZero(std::string& str0)   {
+        return "";
+    }
 };
 
 
@@ -504,16 +507,51 @@ class LAndExp : public BaseAST {
     {
         if (son.size() == 1)
             return son[0]->dump2str(str0);
-        std::string tmp;
-        for (int i = 0; i < son.size(); i += 2)
-        {
-            tmp = son[i]->dump2str(str0);
-            std::cout << "******* LAndExp son[i]->val: " << son[i]->val << " *********" << std::endl;
-            std::cout << "******* LAndExp tmp: " << tmp << " *********" << std::endl;
-            if (son[i]->val == 0)
-                return "0";
+        std::string tmp1, tmp2, tmp3;
+
+        for(int i = 1; i < son.size(); i += 2)
+        {   
+            if (i == 1)
+            {
+                tmp2 = son[0]->dump2str(str0);
+                tmp3 = son[i + 1]->dump2str(str0);
+            }
+            else
+            {
+                tmp3 = son[i + 1]->dump2str(str0);
+                tmp2 = son[i - 1]->dump2str(str0);
+            }
+
+            str0 += " %";
+            str0 += std::to_string(expNumCnt++);
+            str0 += " = ne 0, ";
+            str0 += tmp2;
+            str0 += "\n";
+
+            str0 += " %";
+            str0 += std::to_string(expNumCnt++);
+            str0 += " = ne 0, ";
+            str0 += tmp3;
+            str0 += "\n";
+
+            tmp1 = "%" + std::to_string(expNumCnt++);
+
+            str0 += " ";
+            str0 += tmp1;
+            str0 += " = ";
+
+            if (son[i]->type == _AND)
+                str0 += "and";
+                
+            str0 += " %";
+            str0 += std::to_string(expNumCnt-3);
+            str0 += ", %";
+            str0 += std::to_string(expNumCnt-2);
+            str0 += "\n";
+
+            std::cout << str0 << std::endl;
         }
-        return "1";
+        return tmp1;
     }
 };
 
@@ -527,15 +565,50 @@ class LOrExp : public BaseAST {
     {
         if (son.size() == 1)
             return son[0]->dump2str(str0);
-        std::string tmp;
-        for (int i = 0; i < son.size(); i += 2)
-        {
-            tmp = son[i]->dump2str(str0);
-            std::cout << "******* LOrExp son[i]->val: " << son[i]->val << " *********" << std::endl;
-            std::cout << "******* LOrExp tmp: " << tmp << " *********" << std::endl;
-            if (son[i]->val > 0)
-                return "1";
+        std::string tmp1, tmp2, tmp3;
+
+        for(int i = 1; i < son.size(); i += 2)
+        {   
+            if (i == 1)
+            {
+                tmp2 = son[0]->dump2str(str0);
+                tmp3 = son[i + 1]->dump2str(str0);
+            }
+            else
+            {
+                tmp3 = son[i + 1]->dump2str(str0);
+                tmp2 = son[i - 1]->dump2str(str0);
+            }
+
+            str0 += " %";
+            str0 += std::to_string(expNumCnt++);
+            str0 += " = ne 0, ";
+            str0 += tmp2;
+            str0 += "\n";
+
+            str0 += " %";
+            str0 += std::to_string(expNumCnt++);
+            str0 += " = ne 0, ";
+            str0 += tmp3;
+            str0 += "\n";
+
+            tmp1 = "%" + std::to_string(expNumCnt++);
+
+            str0 += " ";
+            str0 += tmp1;
+            str0 += " = ";
+
+            if (son[i]->type == _OR)
+                str0 += "or";
+                
+            str0 += " %";
+            str0 += std::to_string(expNumCnt-3);
+            str0 += ", %";
+            str0 += std::to_string(expNumCnt-2);
+            str0 += "\n";
+
+            std::cout << str0 << std::endl;
         }
-        return "0";
+        return tmp1;
     }
 };
