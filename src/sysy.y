@@ -29,9 +29,9 @@ using namespace std;
 // 至于为什么要用字符串指针而不直接用 string 或者 unique_ptr<string>?
 // 请自行 STFW 在 union 里写一个带析构函数的类会出现什么情况
 %union {
-  std::string *str_val;
-  int int_val;
-  class BaseAST *ast_val;
+    std::string *str_val;
+    int int_val;
+    class BaseAST *ast_val;
 }
 
 // lexer 返回的所有 token 种类的声明
@@ -40,9 +40,12 @@ using namespace std;
 %token <str_val> IDENT
 %token <int_val> INT_CONST
 %token <ast_val> '=' '>' '<' '+' '-' '*' '/' '%' '!'
+%token <ast_val> LE GE EQ NE LT GT AND OR
 
 // 非终结符的类型定义
-%type <ast_val> FuncDef FuncType Block Stmt Number Exp PrimaryExp UnaryExp UnaryOp AddExp MulExp
+%type <ast_val> FuncDef FuncType Block Stmt Number
+%type <ast_val> Exp PrimaryExp UnaryExp UnaryOp AddExp MulExp
+%type <ast_val> RelExp EqExp LAndExp LOrExp
 /* %type <int_val> Number */
 
 %%
@@ -107,8 +110,9 @@ Stmt
   ;
 
 Exp
-  : AddExp {
+  : LOrExp {
     auto ast = new ExpAST();
+    ast->val = $1->val;
     ast->son.push_back($1);
     $$ = ast;
   }
@@ -118,12 +122,14 @@ PrimaryExp
   : '(' Exp ')' {
     auto ast = new PrimaryExp();
     ast->exp = unique_ptr<BaseAST>($2);
+    ast->val = $2->val;
     ast->son.push_back($2);
     $$ = ast;
   }
   | Number {
     auto ast = new PrimaryExp();
     ast->number = unique_ptr<BaseAST>($1);
+    ast->val = $1->val;
     ast->son.push_back($1);
     $$ = ast;
   }
@@ -141,7 +147,6 @@ Number
 UnaryExp 
   : PrimaryExp{
     auto ast = new UnaryExp();
-    ast->primaryexp = unique_ptr<BaseAST>($1);
     ast->val = $1->val;
     ast->isint = $1->isint;
     ast->son.push_back($1);
@@ -149,10 +154,19 @@ UnaryExp
   }
   | UnaryOp UnaryExp{
     auto ast = new UnaryExp();
-    ast->unaryop = unique_ptr<BaseAST>($1);
-    ast->unaryexp = unique_ptr<BaseAST>($2);
     ast->son.push_back($1);
     ast->son.push_back($2);
+
+    if ($1->son[0]->op == '-')
+      ast->val = 0 - ($2->val);
+    else if ($1->son[0]->op == '!')
+    {
+      if ($2->val == 0)
+        ast->val = 1;
+      else ast->val = 0;
+    }
+    else ast->val = $2->val;
+
     $$ = ast;
   }
   ;
@@ -179,20 +193,26 @@ UnaryOp
 MulExp 
   : UnaryExp {
     auto ast = new MulExp();
+    ast->val = $1->val;
     ast->son.push_back($1);
     $$ = ast;
   }
   | MulExp '*' UnaryExp {
+    $1->val = $1->val * $3->val;
     $1->son.push_back($2);
     $1->son.push_back($3);
     $$ = $1;
   }
   | MulExp '/' UnaryExp {
+    if ($3->val != 0)
+      $1->val = $1->val / $3->val;
     $1->son.push_back($2);
     $1->son.push_back($3);
     $$ = $1;
   }
   | MulExp '%' UnaryExp {
+    if ($3->val != 0)
+      $1->val = $1->val % $3->val;
     $1->son.push_back($2);
     $1->son.push_back($3);
     $$ = $1;
@@ -202,25 +222,127 @@ MulExp
 AddExp
   : MulExp {
     auto ast = new AddExp();
+    ast->val = $1->val;
     ast->son.push_back($1);
     $$ = ast;
   }
   | AddExp '+' MulExp {
+    $1->val = $1->val + $3->val;
     $1->son.push_back($2);
     $1->son.push_back($3);
     $$ = $1;
   }
   | AddExp '-' MulExp {
+    $1->val = $1->val - $3->val;
     $1->son.push_back($2);
     $1->son.push_back($3);
     $$ = $1;
   }
   ;
 
+RelExp
+  : AddExp {
+    auto ast = new RelExp();
+    ast->val = $1->val;
+    ast->son.push_back($1);
+    $$ = ast;
+  }
+  | RelExp LT AddExp {
+    if ($1->val < $3->val)
+      $1->val = 1;
+    else $1->val = 0;
+    $1->son.push_back($2);
+    $1->son.push_back($3);
+    $$ = $1;
+  }
+  | RelExp GT AddExp {
+    if ($1->val > $3->val)
+      $1->val = 1;
+    else $1->val = 0;
+    $1->son.push_back($2);
+    $1->son.push_back($3);
+    $$ = $1;
+  }
+  | RelExp LE AddExp {
+    if ($1->val <= $3->val)
+      $1->val = 1;
+    else $1->val = 0;
+    $1->son.push_back($2);
+    $1->son.push_back($3);
+    $$ = $1;
+  }
+  | RelExp GE AddExp {
+    if ($1->val >= $3->val)
+      $1->val = 1;
+    else $1->val = 0;
+    $1->son.push_back($2);
+    $1->son.push_back($3);
+    $$ = $1;
+  }
+  ;
+
+EqExp
+  : RelExp {
+    auto ast = new EqExp();
+    ast->val = $1->val;
+    ast->son.push_back($1);
+    $$ = ast;
+  }
+  | EqExp EQ RelExp {
+    if ($1->val == $3->val)
+      $1->val = 1;
+    else $1->val = 0;
+    $1->son.push_back($2);
+    $1->son.push_back($3);
+    $$ = $1;
+  }
+  | EqExp NE RelExp {
+    if ($1->val != $3->val)
+      $1->val = 1;
+    else $1->val = 0;
+    $1->son.push_back($2);
+    $1->son.push_back($3);
+    $$ = $1;
+  }
+  ;
+
+LAndExp
+  : EqExp {
+    auto ast = new LAndExp();
+    ast->val = $1->val;
+    ast->son.push_back($1);
+    $$ = ast;
+  }
+  | LAndExp AND EqExp {
+    if ($1->val && $3->val)
+      $1->val = 1;
+    else $1->val = 0;
+    $1->son.push_back($2);
+    $1->son.push_back($3);
+    $$ = $1;
+  }
+  ;
+
+LOrExp
+  : LAndExp {
+    auto ast = new LOrExp();
+    ast->val = $1->val;
+    ast->son.push_back($1);
+    $$ = ast;
+  }
+  | LOrExp OR LAndExp {
+    if ($1->val || $3->val)
+      $1->val = 1;
+    else $1->val = 0;
+    $1->son.push_back($2);
+    $1->son.push_back($3);
+    $$ = $1;
+  }
+  ;
 %%
 
 // 定义错误处理函数, 其中第二个参数是错误信息
 // parser 如果发生错误 (例如输入的程序出现了语法错误), 就会调用这个函数
 void yyerror(unique_ptr<BaseAST> &ast, const char *s) {
-  cerr << "error: " << s << endl;
+    cerr << "error: " << s << endl;
 }

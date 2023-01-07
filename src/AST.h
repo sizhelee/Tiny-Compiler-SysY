@@ -7,7 +7,9 @@
 extern FILE *yyout;
 
 enum TYPE{
-  _UnaryExp, _PrimaryExp, _UnaryOp, _Number, _Exp, _OP, _AddExp, _MulExp,
+  _UnaryExp, _PrimaryExp, _UnaryOp, _Number, _Exp, _OP, _AddExp, _MulExp, _RelExp, 
+  _EqExp, _LAndExp, _LOrExp, _LT, _GT, _LE, _GE, _AND, _OR, _EQ, _NE,
+
 };
 extern int expNumCnt;
 
@@ -117,9 +119,6 @@ class ExpAST : public BaseAST {
     ExpAST() {
         type = _Exp;
     }
-    // std::unique_ptr<BaseAST> unaryexp;
-    char op;
-    int val;
   
     void Dump(std::string& str0) const override {}
 
@@ -133,8 +132,6 @@ class PrimaryExp : public BaseAST {
     public:
     std::unique_ptr<BaseAST> exp;
     std::unique_ptr<BaseAST> number;
-    int val;
-    char op = '+';
     PrimaryExp() {
         type = _PrimaryExp;
     }
@@ -158,10 +155,6 @@ class UnaryExp : public BaseAST {
     std::unique_ptr<BaseAST> primaryexp;
     std::unique_ptr<BaseAST> unaryop;
     std::unique_ptr<BaseAST> unaryexp;
-    int val;
-    char op;
-    int cnt1;
-    int cnt2;
   
     UnaryExp() {
         type = _UnaryExp;
@@ -226,7 +219,78 @@ class UnaryOp : public BaseAST {
 class Op : public BaseAST {
     public:
     Op(TYPE t, char o):BaseAST(t,o){}
-    // char op;
+    void Dump(std::string& str0) const override {}
+};
+
+
+class LT : public BaseAST {
+    public:
+    LT() {
+        type = _LT;
+    }
+    void Dump(std::string& str0) const override {}
+};
+
+
+class LE : public BaseAST {
+    public:
+    LE() {
+        type = _LE;
+    }
+    void Dump(std::string& str0) const override {}
+};
+
+
+class GT : public BaseAST {
+    public:
+    GT() {
+        type = _GT;
+    }
+    void Dump(std::string& str0) const override {}
+};
+
+
+class GE : public BaseAST {
+    public:
+    GE() {
+        type = _GE;
+    }
+    void Dump(std::string& str0) const override {}
+};
+
+
+class EQ : public BaseAST {
+    public:
+    EQ() {
+        type = _EQ;
+    }
+    void Dump(std::string& str0) const override {}
+};
+
+
+class NE : public BaseAST {
+    public:
+    NE() {
+        type = _NE;
+    }
+    void Dump(std::string& str0) const override {}
+};
+
+
+class AND : public BaseAST {
+    public:
+    AND() {
+        type = _AND;
+    }
+    void Dump(std::string& str0) const override {}
+};
+
+
+class OR : public BaseAST {
+    public:
+    OR() {
+        type = _OR;
+    }
     void Dump(std::string& str0) const override {}
 };
 
@@ -246,15 +310,15 @@ class AddExp : public BaseAST {
 
         for(int i = 1; i < son.size(); i += 2)
         {
-            tmp3 = son[i + 1]->dump2str(str0);
-
             if (i == 1)
             {
                 tmp2 = son[0]->dump2str(str0);
+                tmp3 = son[i + 1]->dump2str(str0);
                 tmp1 = "%" + std::to_string(expNumCnt++);
             }
             else
             {
+                tmp3 = son[i + 1]->dump2str(str0);
                 tmp1 = "%" + std::to_string(expNumCnt++);
                 tmp2 = tmp1;
             }
@@ -293,16 +357,16 @@ class MulExp : public BaseAST {
         std::string tmp1, tmp2, tmp3;
 
         for(int i = 1; i < son.size(); i += 2)
-        {
-            tmp3 = son[i + 1]->dump2str(str0);
-            
+        {   
             if (i == 1)
             {
                 tmp2 = son[0]->dump2str(str0);
+                tmp3 = son[i + 1]->dump2str(str0);
                 tmp1 = "%" + std::to_string(expNumCnt++);
             }
             else
             {
+                tmp3 = son[i + 1]->dump2str(str0);
                 tmp1 = "%" + std::to_string(expNumCnt++);
                 tmp2 = tmp1;
             }
@@ -327,5 +391,151 @@ class MulExp : public BaseAST {
             std::cout << str0 << std::endl;
         }
         return tmp1;
+    }
+};
+
+
+class RelExp : public BaseAST {
+    public:
+    RelExp() {  type = _RelExp; }
+    void Dump(std::string& str0) const override {}
+
+    std::string dump2str(std::string &str0) override 
+    {
+        if (son.size() == 1)
+            return son[0]->dump2str(str0);
+        std::string tmp1, tmp2, tmp3;
+
+        for(int i = 1; i < son.size(); i += 2)
+        {   
+            if (i == 1)
+            {
+                tmp2 = son[0]->dump2str(str0);
+                tmp3 = son[i + 1]->dump2str(str0);
+                tmp1 = "%" + std::to_string(expNumCnt++);
+            }
+            else
+            {
+                tmp3 = son[i + 1]->dump2str(str0);
+                tmp1 = "%" + std::to_string(expNumCnt++);
+                tmp2 = tmp1;
+            }
+
+            str0 += " ";
+            str0 += tmp1;
+            str0 += " = ";
+
+            if (son[i]->type == _LT)
+                str0 += "lt";
+            else if (son[i]->type == _LE)
+                str0 += "le";
+            else if (son[i]->type == _GT)
+                str0 += "gt";
+            else if (son[i]->type == _GE)
+                str0 += "ge";
+                
+            str0 += " ";
+            str0 += tmp2;
+            str0 += ", ";
+            str0 += tmp3;
+            str0 += "\n";
+
+            std::cout << str0 << std::endl;
+        }
+        return tmp1;
+    }
+};
+
+
+class EqExp : public BaseAST {
+    public:
+    EqExp() {  type = _EqExp; }
+    void Dump(std::string& str0) const override {}
+
+    std::string dump2str(std::string &str0) override 
+    {
+        if (son.size() == 1)
+            return son[0]->dump2str(str0);
+        std::string tmp1, tmp2, tmp3;
+
+        for(int i = 1; i < son.size(); i += 2)
+        {   
+            if (i == 1)
+            {
+                tmp2 = son[0]->dump2str(str0);
+                tmp3 = son[i + 1]->dump2str(str0);
+                tmp1 = "%" + std::to_string(expNumCnt++);
+            }
+            else
+            {
+                tmp3 = son[i + 1]->dump2str(str0);
+                tmp1 = "%" + std::to_string(expNumCnt++);
+                tmp2 = tmp1;
+            }
+
+            str0 += " ";
+            str0 += tmp1;
+            str0 += " = ";
+
+            if (son[i]->type == _EQ)
+                str0 += "eq";
+            else if (son[i]->type == _NE)
+                str0 += "ne";
+                
+            str0 += " ";
+            str0 += tmp2;
+            str0 += ", ";
+            str0 += tmp3;
+            str0 += "\n";
+
+            std::cout << str0 << std::endl;
+        }
+        return tmp1;
+    }
+};
+
+
+class LAndExp : public BaseAST {
+    public:
+    LAndExp() { type = _LAndExp;    }
+    void Dump(std::string& str0) const override {}
+
+    std::string dump2str(std::string& str0) override
+    {
+        if (son.size() == 1)
+            return son[0]->dump2str(str0);
+        std::string tmp;
+        for (int i = 0; i < son.size(); i += 2)
+        {
+            tmp = son[i]->dump2str(str0);
+            std::cout << "******* LAndExp son[i]->val: " << son[i]->val << " *********" << std::endl;
+            std::cout << "******* LAndExp tmp: " << tmp << " *********" << std::endl;
+            if (son[i]->val == 0)
+                return "0";
+        }
+        return "1";
+    }
+};
+
+
+class LOrExp : public BaseAST {
+    public:
+    LOrExp()    {   type = _LOrExp; }
+    void Dump(std::string& str0) const override {}
+
+    std::string dump2str(std::string& str0) override
+    {
+        if (son.size() == 1)
+            return son[0]->dump2str(str0);
+        std::string tmp;
+        for (int i = 0; i < son.size(); i += 2)
+        {
+            tmp = son[i]->dump2str(str0);
+            std::cout << "******* LOrExp son[i]->val: " << son[i]->val << " *********" << std::endl;
+            std::cout << "******* LOrExp tmp: " << tmp << " *********" << std::endl;
+            if (son[i]->val > 0)
+                return "1";
+        }
+        return "0";
     }
 };
