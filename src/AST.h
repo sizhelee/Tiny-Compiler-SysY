@@ -320,7 +320,7 @@ class AddExp : public BaseAST {
             {
                 tmp3 = son[i + 1]->dump2str(str0);
                 tmp1 = "%" + std::to_string(expNumCnt++);
-                tmp2 = tmp1;
+                tmp2 = son[i - 1]->dump2str(str0);
             }
 
             str0 += " ";
@@ -368,7 +368,7 @@ class MulExp : public BaseAST {
             {
                 tmp3 = son[i + 1]->dump2str(str0);
                 tmp1 = "%" + std::to_string(expNumCnt++);
-                tmp2 = tmp1;
+                tmp2 = son[i - 1]->dump2str(str0);
             }
 
             str0 += " ";
@@ -418,7 +418,7 @@ class RelExp : public BaseAST {
             {
                 tmp3 = son[i + 1]->dump2str(str0);
                 tmp1 = "%" + std::to_string(expNumCnt++);
-                tmp2 = tmp1;
+                tmp2 = son[i - 1]->dump2str(str0);
             }
 
             str0 += " ";
@@ -470,7 +470,7 @@ class EqExp : public BaseAST {
             {
                 tmp3 = son[i + 1]->dump2str(str0);
                 tmp1 = "%" + std::to_string(expNumCnt++);
-                tmp2 = tmp1;
+                tmp2 = son[i - 1]->dump2str(str0);
             }
 
             str0 += " ";
