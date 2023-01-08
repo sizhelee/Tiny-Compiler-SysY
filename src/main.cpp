@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <string.h>
+#include <map>
 
 #include "AST.h"
 #include "koopa.h"
@@ -21,6 +22,8 @@ using namespace std;
 extern FILE *yyin, *yyout;
 extern int yyparse(unique_ptr<BaseAST> &ast);
 int expNumCnt = 0;
+
+map<string, int> symbol_table;
 
 // 函数声明略
 void Visit(const koopa_raw_program_t &program);
@@ -211,6 +214,7 @@ int main(int argc, const char *argv[]) {
   unique_ptr<BaseAST> ast;
   auto ret = yyparse(ast);
   assert(!ret);
+  std::cout << "successfully parsing the input file" << std::endl;
 
   // dump AST
   string str0 = "";

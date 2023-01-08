@@ -2,6 +2,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <map>
 #pragma once
 
 extern FILE *yyout;
@@ -9,9 +10,12 @@ extern FILE *yyout;
 enum TYPE{
   _UnaryExp, _PrimaryExp, _UnaryOp, _Number, _Exp, _OP, _AddExp, _MulExp, _RelExp, 
   _EqExp, _LAndExp, _LOrExp, _LT, _GT, _LE, _GE, _AND, _OR, _EQ, _NE,
+  _Decl, _ConstDecl, _BType, _ConstDef, _myConstDef, _ConstInitVal, _Block, 
+  _BlockItem, _myBlockItem, _LVal, _ConstExp,
 
 };
 extern int expNumCnt;
+extern std::map<std::string, int> symbol_table;
 
 // 所有 AST 的基类
 class BaseAST {
@@ -31,9 +35,6 @@ class BaseAST {
     virtual void Dump(std::string& str0) const = 0;
     
     virtual std::string dump2str(std::string& str0) {
-        return "";
-    }
-    virtual std::string eqZero(std::string& str0)   {
         return "";
     }
 };
@@ -96,10 +97,46 @@ class BlockAST : public  BaseAST {
         str0 += "\%entry:\n";
         std::cout << "\%entry" << ":" << std::endl;
 
-        stmt->Dump(str0);
+        // for(auto iter = son.begin(); iter != son.end(); iter++)
+        //     (*iter)->dump2str(str0);
+        for(int i = 0; i < son.size(); i++)
+            son[i]->dump2str(str0);
 
         str0 += "\n";
         std::cout << std::endl;
+    }
+    std::string dump2str(std::string &str0) override 
+    {
+        return "";
+    }
+};
+
+
+class myBlockItem : public BaseAST {
+    public:
+    myBlockItem()   { type = _myBlockItem;  }
+    void Dump(std::string& str0) const override {}
+
+    std::string dump2str(std::string &str0) override
+    {
+        for(auto iter = son.begin(); iter != son.end(); iter++)
+            (*iter)->dump2str(str0);
+        return "";
+    }
+};
+
+
+class BlockItem: public BaseAST {
+    public:
+    BlockItem() { type = _BlockItem;    }
+    void Dump(std::string& str0) const override {}
+
+    std::string dump2str(std::string& str0) override
+    {
+        if(son[0]->type == _Decl)
+            son[0]->dump2str(str0);
+        else son[0]->Dump(str0);
+        return "";
     }
 };
 
@@ -111,7 +148,8 @@ class StmtAST : public BaseAST {
     void Dump(std::string& str0) const override {
         std::string tmp = exp->dump2str(str0);
         str0 += " ret ";
-        str0 += tmp;
+        // str0 += tmp;
+        str0 += std::to_string(val);
         std::cout << str0 << std::endl;
     }
 };
@@ -174,6 +212,8 @@ class UnaryExp : public BaseAST {
                 tmp1 = std::to_string(son[0]->son[0]->val);
             else if(ptr->son[0]->type == _Exp)
                 tmp1 = ptr->son[0]->dump2str(str0);
+            else if (ptr->son[0]->type == _LVal)
+                tmp1 = std::to_string(son[0]->val);
         }
 
         else if (son[0]->type == _UnaryOp)
@@ -610,5 +650,114 @@ class LOrExp : public BaseAST {
             std::cout << str0 << std::endl;
         }
         return tmp1;
+    }
+};
+
+
+class Decl : public BaseAST {
+    public:
+    Decl()  { type = _Decl;   }
+    void Dump(std::string& str0) const override {}
+
+    std::string dump2str(std::string &str0) override 
+    {
+        son[0]->dump2str(str0);
+        return "";
+    }
+};
+
+
+class ConstDecl: public BaseAST {
+    public:
+    ConstDecl() { type = _ConstDecl;    }
+    void Dump(std::string& str0) const override {}
+
+    std::string dump2str(std::string &str0) override 
+    {
+        for(auto iter = son.begin(); iter != son.end(); iter++)
+            (*iter)->dump2str(str0);
+        return "";
+    }
+};
+
+
+class myConstDef : public BaseAST {
+    public:
+    myConstDef()    { type = _myConstDef;   }
+    void Dump(std::string& str0) const override {}
+
+    std::string dump2str(std::string &str0) override 
+    {
+        for(auto iter = son.begin(); iter != son.end(); iter++)
+            (*iter)->dump2str(str0);
+        return "";
+    }
+};
+
+
+class BType: public BaseAST {
+    public:
+    std::string ident;
+    BType() { type = _BType;    }
+    void Dump(std::string& str0) const override {}
+    std::string dump2str(std::string &str0) override 
+    {
+        return "";
+    }
+};
+
+
+class ConstDef: public BaseAST {
+    public:
+    std::string ident;
+    int constval;
+    ConstDef()  { type = _ConstDef; }
+    void Dump(std::string& str0) const override {}
+
+    std::string dump2str(std::string &str0) override
+    {
+        std::cout << "ConstDef: " << ident << std::endl;
+        symbol_table[ident] = constval;
+        return "";
+    }
+};
+
+
+class ConstInitVal: public BaseAST {
+    public:
+    ConstInitVal()  { type = _ConstInitVal; }
+    void Dump(std::string& str0) const override {}
+    std::string dump2str(std::string &str0) override 
+    {
+        return "";
+    }
+};
+
+
+class ConstExp: public BaseAST {
+    public:
+    ConstExp()  { type = _ConstExp; }
+    void Dump(std::string& str0) const override {}
+    std::string dump2str(std::string &str0) override 
+    {
+        return "";
+    }
+};
+
+
+class LVal: public BaseAST {
+    public:
+    std::string ident;
+    LVal()  { type = _LVal; }
+    void Dump(std::string& str0) const override {}
+
+    std::string dump2str(std::string& str0) override
+    {
+        std::cout << "******** LVal *********\n";
+        // std::cout << symbol_table[ident] << " ********\n";
+        // val = symbol_table[ident];
+        // // return std::to_string(val);
+        // return ident;
+        return "";
     }
 };

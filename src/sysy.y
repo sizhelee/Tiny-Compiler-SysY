@@ -37,7 +37,7 @@ using namespace std;
 // lexer 返回的所有 token 种类的声明
 // 注意 IDENT 和 INT_CONST 会返回 token 的值, 分别对应 str_val 和 int_val
 %token INT RETURN
-%token <str_val> IDENT
+%token <str_val> IDENT CONST
 %token <int_val> INT_CONST
 %token <ast_val> '=' '>' '<' '+' '-' '*' '/' '%' '!'
 %token <ast_val> LE GE EQ NE LT GT AND OR
@@ -46,6 +46,9 @@ using namespace std;
 %type <ast_val> FuncDef FuncType Block Stmt Number
 %type <ast_val> Exp PrimaryExp UnaryExp UnaryOp AddExp MulExp
 %type <ast_val> RelExp EqExp LAndExp LOrExp
+%type <ast_val> Decl ConstDecl BType ConstDef ConstInitVal BlockItem
+%type <ast_val> LVal ConstExp
+%type <ast_val> myConstDef myBlockItem
 /* %type <int_val> Number */
 
 %%
@@ -94,9 +97,33 @@ FuncType
   ;
 
 Block
-  : '{' Stmt '}' {
+  : '{' myBlockItem '}' {
     auto ast = new BlockAST();
-    ast->stmt = unique_ptr<BaseAST>($2);
+    ast->son = $2->son;
+    $$ = ast;
+  }
+  ;
+
+myBlockItem
+  : myBlockItem BlockItem {
+    $1->son.push_back($2);
+    $$ = $1;
+  }
+  | {
+    auto ast = new myBlockItem();
+    $$ = ast;
+  }
+  ;
+
+BlockItem
+  : Decl {
+    auto ast = new BlockItem();
+    ast->son.push_back($1);
+    $$ = ast;
+  }
+  | Stmt {
+    auto ast = new BlockItem();
+    ast->son.push_back($1);
     $$ = ast;
   }
   ;
@@ -104,7 +131,9 @@ Block
 Stmt
   : RETURN Exp ';' {
     auto ast = new StmtAST();
+    ast->val = $2->val;
     ast->exp = unique_ptr<BaseAST>($2);
+    ast->son.push_back($2);
     $$ = ast;
   }
   ;
@@ -128,8 +157,15 @@ PrimaryExp
   }
   | Number {
     auto ast = new PrimaryExp();
-    ast->number = unique_ptr<BaseAST>($1);
     ast->val = $1->val;
+    cout << "******** PrimaryExp: " << ast->val << " ********" << endl;
+    ast->son.push_back($1);
+    $$ = ast;
+  }
+  | LVal {
+    auto ast = new PrimaryExp();
+    ast->val = $1->val;
+    cout << "******** PrimaryExp: " << ast->val << " ********" << endl;
     ast->son.push_back($1);
     $$ = ast;
   }
@@ -339,6 +375,92 @@ LOrExp
     $$ = $1;
   }
   ;
+
+
+Decl
+  : ConstDecl {
+    auto ast = new Decl();
+    ast->son.push_back($1);
+    $$ = ast;
+  }
+  ;
+
+
+ConstDecl
+  : CONST BType myConstDef ';' {
+    auto ast = new ConstDecl();
+    ast->son.push_back($2);
+    ast->son.push_back($3);
+    $$ = ast;
+  }
+  ;
+
+
+myConstDef
+  : myConstDef ',' ConstDef {
+    $1->son.push_back($3);
+    $$ = $1;
+  }
+  | ConstDef {
+    auto ast = new myConstDef();
+    ast->son.push_back($1);
+    $$ = ast;
+  }
+  ;
+
+
+BType
+  : INT {
+    auto ast = new BType();
+    ast->ident = "int";
+    $$ = ast;
+  }
+  ;
+
+
+ConstDef
+  : IDENT '=' ConstInitVal {
+    symbol_table[*$1] = $3->val;
+    auto ast = new ConstDef();
+    ast->ident = *unique_ptr<string>($1);
+    ast->son.push_back($2);
+    ast->son.push_back($3);
+    ast->constval = $3->val;
+    $$ = ast;
+  }
+  ;
+
+
+ConstInitVal
+  : ConstExp {
+    auto ast = new ConstInitVal();
+    ast->val = $1->val;
+    ast->son.push_back($1);
+    $$ = ast;
+  }
+  ;
+
+
+LVal
+  : IDENT {
+    auto ast = new LVal();
+    ast->ident = *unique_ptr<string>($1);
+    ast->val = symbol_table[ast->ident];
+    cout << "******** LVal(" << ast->ident << "): " << ast->val << " ********" << endl;
+    $$ = ast;
+  }
+  ;
+
+
+ConstExp
+  : Exp {
+    auto ast = new ConstExp();
+    ast->val = $1->val;
+    ast->son.push_back($1);
+    $$ = ast;
+  }
+  ;
+
 %%
 
 // 定义错误处理函数, 其中第二个参数是错误信息
