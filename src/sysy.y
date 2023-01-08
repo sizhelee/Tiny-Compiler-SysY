@@ -134,6 +134,7 @@ Stmt
     ast->val = $2->val;
     ast->exp = unique_ptr<BaseAST>($2);
     ast->son.push_back($2);
+    ast->ret = true;
     $$ = ast;
   }
   | LVal '=' Exp ';' {
@@ -143,6 +144,25 @@ Stmt
     ast->son.push_back($1);
     ast->son.push_back($2);
     ast->son.push_back($3);
+    $$ = ast;
+  }
+  | Exp ';' {
+    auto ast = new StmtAST();
+    ast->son.push_back($1);
+    $$ = ast;
+  }
+  | ';' {
+    auto ast = new StmtAST();
+    $$ = ast;
+  }
+  | Block {
+    auto ast = new StmtAST();
+    ast->son.push_back($1);
+    $$ = ast;
+  }
+  | RETURN ';' {
+    auto ast = new StmtAST();
+    ast->ret = true;
     $$ = ast;
   }
   ;

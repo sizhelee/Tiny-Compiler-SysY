@@ -9,6 +9,7 @@
 extern FILE *yyout;
 
 enum TYPE{
+    _CompUnit, _FuncDef, _Stmt, 
   _UnaryExp, _PrimaryExp, _UnaryOp, _Number, _Exp, _OP, _AddExp, _MulExp, _RelExp, 
   _EqExp, _LAndExp, _LOrExp, _LT, _GT, _LE, _GE, _AND, _OR, _EQ, _NE,
   _Decl, _ConstDecl, _BType, _ConstDef, _myConstDef, _ConstInitVal, _Block, 
@@ -16,8 +17,10 @@ enum TYPE{
   _InitVal, 
 
 };
-extern int expNumCnt;
+extern int expNumCnt, symTabCnt;
 extern std::map<std::string, std::pair<int, int>> symbol_table;
+extern std::map<std::string, std::pair<int, int>> *current_table;
+extern std::map<std::map<std::string, std::pair<int, int>>*, std::map<std::string, std::pair<int, int>>*> total_table;
 
 // 所有 AST 的基类
 class BaseAST {
@@ -48,7 +51,12 @@ class CompUnitAST : public BaseAST {
     public:
     std::unique_ptr<BaseAST> func_def;
 
+    CompUnitAST() {
+        type = _CompUnit;
+    }
+
     void Dump(std::string& str0) const override {
+        current_table = &symbol_table;
         str0 = "";
         func_def->Dump(str0);
     }
@@ -62,6 +70,11 @@ class FuncDefAST : public BaseAST {
     std::string ident;
     std::unique_ptr<BaseAST> block;
 
+    FuncDefAST()
+    {
+        type = _FuncDef;
+    }
+
     void Dump(std::string& str0) const override {
         str0 += "fun @";
         str0 += ident;
@@ -71,6 +84,10 @@ class FuncDefAST : public BaseAST {
 
         str0 += " { \n";
         std::cout << " { "<<std::endl;
+
+        str0 += "\%entry:\n";
+        std::cout << "\%entry" << ":" << std::endl;
+
         block->Dump(str0);
         str0 += "}";
         std::cout << "}";
@@ -95,19 +112,25 @@ class FuncTypeAST : public BaseAST {
 class BlockAST : public  BaseAST {
     public:
     std::unique_ptr<BaseAST> stmt;
+    BlockAST()  { type = _Block;    }
 
     void Dump(std::string& str0) const override {
-        str0 += "\%entry:\n";
-        std::cout << "\%entry" << ":" << std::endl;
+        std::map<std::string, std::pair<int, int>> new_table;
+        std::map<std::string, std::pair<int, int>>* record_table = current_table;
+        current_table = &new_table;
+        total_table[current_table] = record_table;
+        symTabCnt += 1;
 
-        // for(auto iter = son.begin(); iter != son.end(); iter++)
-        //     (*iter)->dump2str(str0);
-        for(int i = 0; i < son.size(); i++)
-            son[i]->dump2str(str0);
+        for(auto iter = son.begin(); iter != son.end(); iter++)
+            (*iter)->dump2str(str0);
 
         str0 += "\n";
         std::cout << std::endl;
+
+        current_table = record_table;
+        symTabCnt -= 1;
     }
+
     std::string dump2str(std::string &str0) override 
     {
         return "";
@@ -147,30 +170,62 @@ class BlockItem: public BaseAST {
 class StmtAST : public BaseAST {
     public:
     std::unique_ptr<BaseAST> exp;
+    bool ret = false;
+    StmtAST()   { type = _Stmt; }
 
     void Dump(std::string& str0) const override 
     {
-        if (son[0]->type == _Exp)
+        if (ret)
         {
-            std::string tmp = exp->dump2str(str0);
-            str0 += " ret ";
-            str0 += tmp;
-            // str0 += std::to_string(exp->val);
-            std::cout << str0 << std::endl;
+            if (son.size() > 0)
+            {
+                std::string tmp = exp->dump2str(str0);
+                str0 += " ret ";
+                str0 += tmp;
+                std::cout << str0 << std::endl;
+            }
+            else
+            {
+                str0 += " ret 0";
+                std::cout << str0 << std::endl;
+            }
         }
 
-        else
+        else if (son.size() == 0)
+            return;
+        else if (son[0]->type == _LVal)
         {
             std::string exptmp = son[2]->dump2str(str0);
             std::string identtmp = son[0]->dump2str(str0);
+            std::string identtmp_num;
+
+            int searchdep = symTabCnt;
+            std::map<std::string, std::pair<int, int>> *search_table = current_table;
+            while (searchdep > 0)
+            {
+                identtmp_num = identtmp + '_' + std::to_string(searchdep);
+                if ((*search_table).find(identtmp_num) != (*search_table).end())
+                    break;
+                search_table = total_table[search_table];
+                searchdep -= 1;
+            }
+
             str0 += " store ";
             str0 += exptmp;
             str0 += ", @";
-            str0 += identtmp;
+            str0 += identtmp_num;
             str0 += "\n";
-            std::cout << "****** renew symbol table: " << identtmp << " → " << std::to_string(son[2]->val) << std::endl;
-            symbol_table[identtmp] = std::make_pair(son[2]->val, 0);
-            son[0]->val = son[2]->val;
+            std::cout << str0 << std::endl;
+        }
+
+        else if (son[0]->type == _Exp)
+        {
+            std::string tmp = son[0]->dump2str(str0);
+        }
+
+        else if (son[0]->type == _Block)
+        {
+            son[0]->Dump(str0);
         }
     }
 };
@@ -236,14 +291,34 @@ class UnaryExp : public BaseAST {
             else if (ptr->son[0]->type == _LVal)
             {
                 tmp1 = ptr->son[0]->dump2str(str0);
-                auto sym_label_val = symbol_table[tmp1];
+                std::string identtmp = tmp1;
+                std::string identtmp_num;
+                int searchdep = symTabCnt;
+                std::map<std::string, std::pair<int, int>> *search_table = current_table;
+                
+                while (searchdep > 0)
+                {
+                    identtmp_num = identtmp + '_' + std::to_string(searchdep);
+                    if ((*search_table).find(identtmp_num) != (*search_table).end())
+                        break;
+                    search_table = total_table[search_table];
+                    searchdep -= 1;
+                }
+
+                if (searchdep == 0)
+                {
+                    auto sym_label_val = symbol_table[tmp1];
+                    return std::to_string(sym_label_val.first);
+                }
+                
+                auto sym_label_val = (*search_table)[identtmp_num];
                 if (sym_label_val.second == 0)
                 {
                     tmp2 = "%" + std::to_string(expNumCnt++);
                     str0 += " ";
                     str0 += tmp2;
                     str0 += " = load @";
-                    str0 += tmp1;
+                    str0 += identtmp_num;
                     str0 += "\n";
                 }
                 else
@@ -277,10 +352,6 @@ class UnaryExp : public BaseAST {
             }
             else if (son[0]->son[0]->op == '+')
                 tmp1 = son[1]->dump2str(str0);
-
-            else {
-                std::cout << "wrong_op_type" << std::endl;
-            }
         }
         return tmp1;
     }
@@ -767,7 +838,8 @@ class ConstDef: public BaseAST {
     std::string dump2str(std::string &str0) override
     {
         std::cout << "ConstDef: " << ident << std::endl;
-        symbol_table[ident] = std::make_pair(constval, 1);
+        std::string identtmp = ident + '_' + std::to_string(symTabCnt);
+        (*current_table)[identtmp] = std::make_pair(constval, 1);
         return "";
     }
 };
@@ -850,8 +922,9 @@ class VarDef: public BaseAST {
 
     std::string dump2str(std::string& str0) override
     {
+        std::string identtmp_num = ident + '_' + std::to_string(symTabCnt);
         str0 += " @";
-        str0 += ident;
+        str0 += identtmp_num;
         str0 += " = alloc i32\n";
 
         if (son.size() > 0)
@@ -861,14 +934,20 @@ class VarDef: public BaseAST {
             str0 += " store ";
             str0 += tmp;
             str0 += ", @";
-            str0 += ident;
+            str0 += identtmp_num;
             str0 += "\n";
 
-            symbol_table[ident] = std::make_pair(std::atoi(tmp.c_str()), 0);
+            (*current_table)[identtmp_num] = std::make_pair(std::atoi(tmp.c_str()), 0);
         }
         else
         {
-            symbol_table[ident] = std::make_pair(0x7fffffff, 0);
+            str0 += " store ";
+            str0 += std::to_string(varval);
+            str0 += ", @";
+            str0 += identtmp_num;
+            str0 += "\n";
+
+            (*current_table)[identtmp_num] = std::make_pair(varval, 0);
         }
 
         return "";
