@@ -124,6 +124,7 @@ BlockItem
   | Stmt {
     auto ast = new BlockItem();
     ast->son.push_back($1);
+    ast->ret = $1->ret;
     $$ = ast;
   }
   ;

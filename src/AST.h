@@ -30,7 +30,7 @@ class BaseAST {
     TYPE type;
     int val;
     char op;
-    bool isint = false;
+    bool isint = false, ret = false;
     std::string ident;
 
     BaseAST() = default;
@@ -122,7 +122,11 @@ class BlockAST : public  BaseAST {
         symTabCnt += 1;
 
         for(auto iter = son.begin(); iter != son.end(); iter++)
+        {
             (*iter)->dump2str(str0);
+            if ((*iter)->ret)
+                break;
+        }
 
         str0 += "\n";
         std::cout << std::endl;
@@ -162,6 +166,8 @@ class BlockItem: public BaseAST {
         if(son[0]->type == _Decl)
             son[0]->dump2str(str0);
         else son[0]->Dump(str0);
+        if (son[0]->ret)
+            ret = true;
         return "";
     }
 };
@@ -170,7 +176,6 @@ class BlockItem: public BaseAST {
 class StmtAST : public BaseAST {
     public:
     std::unique_ptr<BaseAST> exp;
-    bool ret = false;
     StmtAST()   { type = _Stmt; }
 
     void Dump(std::string& str0) const override 
@@ -182,11 +187,12 @@ class StmtAST : public BaseAST {
                 std::string tmp = exp->dump2str(str0);
                 str0 += " ret ";
                 str0 += tmp;
+                str0 += "\n";
                 std::cout << str0 << std::endl;
             }
             else
             {
-                str0 += " ret 0";
+                str0 += " ret 0\n";
                 std::cout << str0 << std::endl;
             }
         }
