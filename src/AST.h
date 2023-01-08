@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <variant>
 #pragma once
 
 extern FILE *yyout;
@@ -11,11 +12,12 @@ enum TYPE{
   _UnaryExp, _PrimaryExp, _UnaryOp, _Number, _Exp, _OP, _AddExp, _MulExp, _RelExp, 
   _EqExp, _LAndExp, _LOrExp, _LT, _GT, _LE, _GE, _AND, _OR, _EQ, _NE,
   _Decl, _ConstDecl, _BType, _ConstDef, _myConstDef, _ConstInitVal, _Block, 
-  _BlockItem, _myBlockItem, _LVal, _ConstExp,
+  _BlockItem, _myBlockItem, _LVal, _ConstExp, _VarDecl, _myVarDef, _VarDef, 
+  _InitVal, 
 
 };
 extern int expNumCnt;
-extern std::map<std::string, int> symbol_table;
+extern std::map<std::string, std::pair<int, int>> symbol_table;
 
 // 所有 AST 的基类
 class BaseAST {
@@ -26,6 +28,7 @@ class BaseAST {
     int val;
     char op;
     bool isint = false;
+    std::string ident;
 
     BaseAST() = default;
     BaseAST(TYPE t): type(t){}
@@ -145,12 +148,30 @@ class StmtAST : public BaseAST {
     public:
     std::unique_ptr<BaseAST> exp;
 
-    void Dump(std::string& str0) const override {
-        std::string tmp = exp->dump2str(str0);
-        str0 += " ret ";
-        // str0 += tmp;
-        str0 += std::to_string(val);
-        std::cout << str0 << std::endl;
+    void Dump(std::string& str0) const override 
+    {
+        if (son[0]->type == _Exp)
+        {
+            std::string tmp = exp->dump2str(str0);
+            str0 += " ret ";
+            str0 += tmp;
+            // str0 += std::to_string(exp->val);
+            std::cout << str0 << std::endl;
+        }
+
+        else
+        {
+            std::string exptmp = son[2]->dump2str(str0);
+            std::string identtmp = son[0]->dump2str(str0);
+            str0 += " store ";
+            str0 += exptmp;
+            str0 += ", @";
+            str0 += identtmp;
+            str0 += "\n";
+            std::cout << "****** renew symbol table: " << identtmp << " → " << std::to_string(son[2]->val) << std::endl;
+            symbol_table[identtmp] = std::make_pair(son[2]->val, 0);
+            son[0]->val = son[2]->val;
+        }
     }
 };
 
@@ -213,7 +234,24 @@ class UnaryExp : public BaseAST {
             else if(ptr->son[0]->type == _Exp)
                 tmp1 = ptr->son[0]->dump2str(str0);
             else if (ptr->son[0]->type == _LVal)
-                tmp1 = std::to_string(son[0]->val);
+            {
+                tmp1 = ptr->son[0]->dump2str(str0);
+                auto sym_label_val = symbol_table[tmp1];
+                if (sym_label_val.second == 0)
+                {
+                    tmp2 = "%" + std::to_string(expNumCnt++);
+                    str0 += " ";
+                    str0 += tmp2;
+                    str0 += " = load @";
+                    str0 += tmp1;
+                    str0 += "\n";
+                }
+                else
+                {
+                    tmp2 = std::to_string(sym_label_val.first);
+                }
+                return tmp2;
+            }
         }
 
         else if (son[0]->type == _UnaryOp)
@@ -349,7 +387,7 @@ class AddExp : public BaseAST {
     {
         if (son.size() == 1)
             return son[0]->dump2str(str0);
-        std::string tmp1, tmp2, tmp3;
+        std::string tmp1, tmp2, tmp3, lasttmp;
 
         for(int i = 1; i < son.size(); i += 2)
         {
@@ -358,12 +396,15 @@ class AddExp : public BaseAST {
                 tmp2 = son[0]->dump2str(str0);
                 tmp3 = son[i + 1]->dump2str(str0);
                 tmp1 = "%" + std::to_string(expNumCnt++);
+                lasttmp = tmp1;
             }
             else
             {
                 tmp3 = son[i + 1]->dump2str(str0);
                 tmp1 = "%" + std::to_string(expNumCnt++);
-                tmp2 = son[i - 1]->dump2str(str0);
+                // tmp2 = son[i - 1]->dump2str(str0);
+                tmp2 = lasttmp;
+                lasttmp = tmp1;
             }
 
             str0 += " ";
@@ -397,7 +438,7 @@ class MulExp : public BaseAST {
     {
         if (son.size() == 1)
             return son[0]->dump2str(str0);
-        std::string tmp1, tmp2, tmp3;
+        std::string tmp1, tmp2, tmp3, lasttmp;
 
         for(int i = 1; i < son.size(); i += 2)
         {   
@@ -406,12 +447,15 @@ class MulExp : public BaseAST {
                 tmp2 = son[0]->dump2str(str0);
                 tmp3 = son[i + 1]->dump2str(str0);
                 tmp1 = "%" + std::to_string(expNumCnt++);
+                lasttmp = tmp1;
             }
             else
             {
                 tmp3 = son[i + 1]->dump2str(str0);
                 tmp1 = "%" + std::to_string(expNumCnt++);
-                tmp2 = son[i - 1]->dump2str(str0);
+                // tmp2 = son[i - 1]->dump2str(str0);
+                tmp2 = lasttmp;
+                lasttmp = tmp1;
             }
 
             str0 += " ";
@@ -447,7 +491,7 @@ class RelExp : public BaseAST {
     {
         if (son.size() == 1)
             return son[0]->dump2str(str0);
-        std::string tmp1, tmp2, tmp3;
+        std::string tmp1, tmp2, tmp3, lasttmp;
 
         for(int i = 1; i < son.size(); i += 2)
         {   
@@ -456,12 +500,15 @@ class RelExp : public BaseAST {
                 tmp2 = son[0]->dump2str(str0);
                 tmp3 = son[i + 1]->dump2str(str0);
                 tmp1 = "%" + std::to_string(expNumCnt++);
+                lasttmp = tmp1;
             }
             else
             {
                 tmp3 = son[i + 1]->dump2str(str0);
                 tmp1 = "%" + std::to_string(expNumCnt++);
-                tmp2 = son[i - 1]->dump2str(str0);
+                // tmp2 = son[i - 1]->dump2str(str0);
+                tmp2 = lasttmp;
+                lasttmp = tmp1;
             }
 
             str0 += " ";
@@ -499,7 +546,7 @@ class EqExp : public BaseAST {
     {
         if (son.size() == 1)
             return son[0]->dump2str(str0);
-        std::string tmp1, tmp2, tmp3;
+        std::string tmp1, tmp2, tmp3, lasttmp;
 
         for(int i = 1; i < son.size(); i += 2)
         {   
@@ -508,12 +555,15 @@ class EqExp : public BaseAST {
                 tmp2 = son[0]->dump2str(str0);
                 tmp3 = son[i + 1]->dump2str(str0);
                 tmp1 = "%" + std::to_string(expNumCnt++);
+                lasttmp = tmp1;
             }
             else
             {
                 tmp3 = son[i + 1]->dump2str(str0);
                 tmp1 = "%" + std::to_string(expNumCnt++);
-                tmp2 = son[i - 1]->dump2str(str0);
+                // tmp2 = son[i - 1]->dump2str(str0);
+                tmp2 = lasttmp;
+                lasttmp = tmp1;
             }
 
             str0 += " ";
@@ -717,7 +767,7 @@ class ConstDef: public BaseAST {
     std::string dump2str(std::string &str0) override
     {
         std::cout << "ConstDef: " << ident << std::endl;
-        symbol_table[ident] = constval;
+        symbol_table[ident] = std::make_pair(constval, 1);
         return "";
     }
 };
@@ -757,7 +807,82 @@ class LVal: public BaseAST {
         // std::cout << symbol_table[ident] << " ********\n";
         // val = symbol_table[ident];
         // // return std::to_string(val);
-        // return ident;
+        return ident;
+        // return "";
+    }
+};
+
+
+class VarDecl: public BaseAST {
+    public:
+    VarDecl()   { type = _VarDecl;  }
+    void Dump(std::string &str0) const override {}
+
+    std::string dump2str(std::string &str0) override 
+    {
+        son[1]->dump2str(str0);
         return "";
+    }
+};
+
+
+class myVarDef: public BaseAST {
+    public:
+    myVarDef()  { type = _myVarDef; }
+    void Dump(std::string& str0) const override {}
+
+    std::string dump2str(std::string &str0) override
+    {
+        for(auto iter = son.begin(); iter != son.end(); iter++)
+            (*iter)->dump2str(str0);
+        return "";
+    }
+};
+
+
+class VarDef: public BaseAST {
+    public:
+    std::string ident;
+    int varval;
+
+    VarDef()    { type = _VarDef;   }
+    void Dump(std::string& str0) const override {}
+
+    std::string dump2str(std::string& str0) override
+    {
+        str0 += " @";
+        str0 += ident;
+        str0 += " = alloc i32\n";
+
+        if (son.size() > 0)
+        {
+            // str0 += std::to_string(son[0]->val);
+            std::string tmp = son[0]->dump2str(str0);
+            str0 += " store ";
+            str0 += tmp;
+            str0 += ", @";
+            str0 += ident;
+            str0 += "\n";
+
+            symbol_table[ident] = std::make_pair(std::atoi(tmp.c_str()), 0);
+        }
+        else
+        {
+            symbol_table[ident] = std::make_pair(0x7fffffff, 0);
+        }
+
+        return "";
+    }
+};
+
+
+class InitVal: public BaseAST {
+    public:
+    InitVal()   { type = _InitVal;  }
+    void Dump(std::string& str0) const override {}
+
+    std::string dump2str(std::string& str0) override
+    {
+        return son[0]->dump2str(str0);
     }
 };

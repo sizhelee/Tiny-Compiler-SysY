@@ -47,8 +47,8 @@ using namespace std;
 %type <ast_val> Exp PrimaryExp UnaryExp UnaryOp AddExp MulExp
 %type <ast_val> RelExp EqExp LAndExp LOrExp
 %type <ast_val> Decl ConstDecl BType ConstDef ConstInitVal BlockItem
-%type <ast_val> LVal ConstExp
-%type <ast_val> myConstDef myBlockItem
+%type <ast_val> LVal ConstExp VarDecl VarDef InitVal
+%type <ast_val> myConstDef myBlockItem myVarDef
 /* %type <int_val> Number */
 
 %%
@@ -136,6 +136,15 @@ Stmt
     ast->son.push_back($2);
     $$ = ast;
   }
+  | LVal '=' Exp ';' {
+    auto ast = new StmtAST();
+    ast->val = $3->val;
+    $1->val = $3->val;
+    ast->son.push_back($1);
+    ast->son.push_back($2);
+    ast->son.push_back($3);
+    $$ = ast;
+  }
   ;
 
 Exp
@@ -158,14 +167,14 @@ PrimaryExp
   | Number {
     auto ast = new PrimaryExp();
     ast->val = $1->val;
-    cout << "******** PrimaryExp: " << ast->val << " ********" << endl;
+    cout << "******** PrimaryExp-Number: " << ast->val << " ********" << endl;
     ast->son.push_back($1);
     $$ = ast;
   }
   | LVal {
     auto ast = new PrimaryExp();
     ast->val = $1->val;
-    cout << "******** PrimaryExp: " << ast->val << " ********" << endl;
+    cout << "******** PrimaryExp-Lval: " << ast->val << " ********" << endl;
     ast->son.push_back($1);
     $$ = ast;
   }
@@ -383,6 +392,11 @@ Decl
     ast->son.push_back($1);
     $$ = ast;
   }
+  | VarDecl {
+    auto ast = new Decl();
+    ast->son.push_back($1);
+    $$ = ast;
+  }
   ;
 
 
@@ -420,7 +434,7 @@ BType
 
 ConstDef
   : IDENT '=' ConstInitVal {
-    symbol_table[*$1] = $3->val;
+    symbol_table[*$1] = make_pair($3->val, 1);
     auto ast = new ConstDef();
     ast->ident = *unique_ptr<string>($1);
     ast->son.push_back($2);
@@ -445,7 +459,7 @@ LVal
   : IDENT {
     auto ast = new LVal();
     ast->ident = *unique_ptr<string>($1);
-    ast->val = symbol_table[ast->ident];
+    ast->val = symbol_table[ast->ident].first;
     cout << "******** LVal(" << ast->ident << "): " << ast->val << " ********" << endl;
     $$ = ast;
   }
@@ -457,6 +471,57 @@ ConstExp
     auto ast = new ConstExp();
     ast->val = $1->val;
     ast->son.push_back($1);
+    $$ = ast;
+  }
+  ;
+
+
+VarDecl
+  : BType myVarDef ';' {
+    auto ast = new VarDecl();
+    ast->son.push_back($1);
+    ast->son.push_back($2);
+    $$ = ast;
+  }
+  ;
+
+
+myVarDef
+  : VarDef {
+    auto ast = new myVarDef();
+    ast->son.push_back($1);
+    $$ = ast;
+  }
+  | myVarDef ',' VarDef {
+    $1->son.push_back($3);
+    $$ = $1;
+  }
+  ;
+
+
+VarDef
+  : IDENT {
+    auto ast = new VarDef();
+    ast->ident = *unique_ptr<string>($1);
+    symbol_table[ast->ident] = make_pair(0x7fffffff, -1);
+    $$ = ast;
+  }
+  | IDENT '=' InitVal {
+    auto ast = new VarDef();
+    ast->ident = *unique_ptr<string>($1);
+    ast->val = $3->val;
+    ast->son.push_back($3);
+    symbol_table[ast->ident] = make_pair(ast->val, 0);
+    $$ = ast;
+  }
+  ;
+
+
+InitVal
+  : Exp {
+    auto ast = new InitVal();
+    ast->son.push_back($1);
+    ast->val = $1->val;
     $$ = ast;
   }
   ;

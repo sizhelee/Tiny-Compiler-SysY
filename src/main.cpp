@@ -5,6 +5,7 @@
 #include <string>
 #include <string.h>
 #include <map>
+#include <variant>
 
 #include "AST.h"
 #include "koopa.h"
@@ -23,7 +24,7 @@ extern FILE *yyin, *yyout;
 extern int yyparse(unique_ptr<BaseAST> &ast);
 int expNumCnt = 0;
 
-map<string, int> symbol_table;
+map<string, pair<int, int>> symbol_table;
 
 // 函数声明略
 void Visit(const koopa_raw_program_t &program);
