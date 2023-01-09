@@ -22,7 +22,8 @@ using namespace std;
 // 看起来会很烦人, 于是干脆采用这种看起来 dirty 但实际很有效的手段
 extern FILE *yyin, *yyout;
 extern int yyparse(unique_ptr<BaseAST> &ast);
-int expNumCnt = 0, symTabCnt = 0;
+int debugmode = 1;
+int expNumCnt = 0, symTabCnt = 0, ifNumCnt = 0, allsymTabCnt = 0;
 
 map<string, pair<int, int>> symbol_table;
 map<string, pair<int, int>> *current_table;

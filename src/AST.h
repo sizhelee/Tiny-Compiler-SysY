@@ -17,7 +17,7 @@ enum TYPE{
   _InitVal, 
 
 };
-extern int expNumCnt, symTabCnt;
+extern int expNumCnt, symTabCnt, ifNumCnt, allsymTabCnt;
 extern std::map<std::string, std::pair<int, int>> symbol_table;
 extern std::map<std::string, std::pair<int, int>> *current_table;
 extern std::map<std::map<std::string, std::pair<int, int>>*, std::map<std::string, std::pair<int, int>>*> total_table;
@@ -30,7 +30,7 @@ class BaseAST {
     TYPE type;
     int val;
     char op;
-    bool isint = false, ret = false;
+    bool isint = false, ret = false, isif = false;
     std::string ident;
 
     BaseAST() = default;
@@ -120,12 +120,12 @@ class BlockAST : public  BaseAST {
         current_table = &new_table;
         total_table[current_table] = record_table;
         symTabCnt += 1;
+        allsymTabCnt += 1;
 
         std::cout << "******* block item num: " << son.size() << " *********\n";
         for(auto iter = son.begin(); iter != son.end(); iter++)
         {
             (*iter)->dump2str(str0);
-            std::cout << str0 << std::endl;
             if ((*iter)->ret)
                 break;
         }
@@ -197,14 +197,69 @@ class StmtAST : public BaseAST {
                     str0 += " ret ";
                     str0 += tmp;
                     str0 += "\n";
-                    std::cout << str0 << std::endl;
+                    // std::cout << str0 << std::endl;
                 }     
             }
             else
             {
                 str0 += " ret 0\n";
-                std::cout << str0 << std::endl;
+                // std::cout << str0 << std::endl;
             }
+        }
+
+        else if (isif)
+        {
+            // deal with the 'if' statement
+            std::cout << "@@@@@@@ Stmt IF statement @@@@@@@\n";
+            std::string tmp = son[0]->dump2str(str0);
+
+            int ifNumCnt_tmp = ifNumCnt;
+            ifNumCnt++;
+
+            str0 += " br ";
+            str0 += tmp;
+            str0 += ", \%then_";
+            str0 += std::to_string(ifNumCnt_tmp);
+            str0 += ", ";
+
+            if (son.size() == 3) // if-else
+                str0 += "\%else_";
+            else if (son.size() == 2)
+                str0 += "\%end_";
+
+            str0 += std::to_string(ifNumCnt_tmp);
+            str0 += "\n";
+
+            // deal with the 'then' statement
+            str0 += "\%then_";
+            str0 += std::to_string(ifNumCnt_tmp);
+            str0 += ":\n";
+            son[1]->Dump(str0);
+            if (!son[1]->ret)
+            {
+                str0 += " jump \%end_";
+                str0 += std::to_string(ifNumCnt_tmp);
+                str0 += "\n";
+            }
+
+            // deal with the 'else' statement
+            if (son.size() == 3)
+            {
+                str0 += "\%else_";
+                str0 += std::to_string(ifNumCnt_tmp);
+                str0 += ":\n";
+                son[2]->Dump(str0);
+                if (!son[2]->ret)
+                {
+                    str0 += " jump \%end_";
+                    str0 += std::to_string(ifNumCnt_tmp);
+                    str0 += "\n";
+                }
+            }
+
+            str0 += "\%end_";
+            str0 += std::to_string(ifNumCnt_tmp);
+            str0 += ":\n";
         }
 
         else if (son.size() == 0)
@@ -218,10 +273,19 @@ class StmtAST : public BaseAST {
             int searchdep = symTabCnt;
             std::map<std::string, std::pair<int, int>> *search_table = current_table;
             while (searchdep > 0)
-            {
-                identtmp_num = identtmp + '_' + std::to_string(searchdep);
-                if ((*search_table).find(identtmp_num) != (*search_table).end())
+            {   
+                int flag = 0;
+                for (int ident_idx = allsymTabCnt; ident_idx >= searchdep; ident_idx--)
+                {
+                    identtmp_num = identtmp + '_' + std::to_string(ident_idx);
+                    if ((*search_table).find(identtmp_num) != (*search_table).end())
+                        flag = 1;
+                    if (flag)
+                        break;
+                }
+                if (flag)
                     break;
+                
                 search_table = total_table[search_table];
                 searchdep -= 1;
             }
@@ -231,7 +295,7 @@ class StmtAST : public BaseAST {
             str0 += ", @";
             str0 += identtmp_num;
             str0 += "\n";
-            std::cout << str0 << std::endl;
+            // std::cout << str0 << std::endl;
         }
 
         else if (son[0]->type == _Exp)
@@ -314,8 +378,16 @@ class UnaryExp : public BaseAST {
                 
                 while (searchdep > 0)
                 {
-                    identtmp_num = identtmp + '_' + std::to_string(searchdep);
-                    if ((*search_table).find(identtmp_num) != (*search_table).end())
+                    int flag = 0;
+                    for (int ident_idx = allsymTabCnt; ident_idx >= searchdep; ident_idx--)
+                    {
+                        identtmp_num = identtmp + '_' + std::to_string(ident_idx);
+                        if ((*search_table).find(identtmp_num) != (*search_table).end())
+                            flag = 1;
+                        if (flag)
+                            break;
+                    }
+                    if (flag)
                         break;
                     search_table = total_table[search_table];
                     searchdep -= 1;
@@ -364,7 +436,7 @@ class UnaryExp : public BaseAST {
                 str0 += "0, ";
                 str0 += tmp2.c_str();
                 str0 += "\n";
-                std::cout << str0 << std::endl;
+                // std::cout << str0 << std::endl;
             }
             else if (son[0]->son[0]->op == '+')
                 tmp1 = son[1]->dump2str(str0);
@@ -509,7 +581,7 @@ class AddExp : public BaseAST {
             str0 += tmp3;
             str0 += "\n";
 
-            std::cout << str0 << std::endl;
+            // std::cout << str0 << std::endl;
         }
         return tmp1;
     }
@@ -562,7 +634,7 @@ class MulExp : public BaseAST {
             str0 += tmp3;
             str0 += "\n";
 
-            std::cout << str0 << std::endl;
+            // std::cout << str0 << std::endl;
         }
         return tmp1;
     }
@@ -617,7 +689,7 @@ class RelExp : public BaseAST {
             str0 += tmp3;
             str0 += "\n";
 
-            std::cout << str0 << std::endl;
+            // std::cout << str0 << std::endl;
         }
         return tmp1;
     }
@@ -668,7 +740,7 @@ class EqExp : public BaseAST {
             str0 += tmp3;
             str0 += "\n";
 
-            std::cout << str0 << std::endl;
+            // std::cout << str0 << std::endl;
         }
         return tmp1;
     }
@@ -726,7 +798,7 @@ class LAndExp : public BaseAST {
             str0 += std::to_string(expNumCnt-2);
             str0 += "\n";
 
-            std::cout << str0 << std::endl;
+            // std::cout << str0 << std::endl;
         }
         return tmp1;
     }
@@ -784,7 +856,7 @@ class LOrExp : public BaseAST {
             str0 += std::to_string(expNumCnt-2);
             str0 += "\n";
 
-            std::cout << str0 << std::endl;
+            // std::cout << str0 << std::endl;
         }
         return tmp1;
     }
@@ -854,7 +926,7 @@ class ConstDef: public BaseAST {
     std::string dump2str(std::string &str0) override
     {
         std::cout << "ConstDef: " << ident << std::endl;
-        std::string identtmp = ident + '_' + std::to_string(symTabCnt);
+        std::string identtmp = ident + '_' + std::to_string(allsymTabCnt);
         (*current_table)[identtmp] = std::make_pair(constval, 1);
         return "";
     }
@@ -938,7 +1010,7 @@ class VarDef: public BaseAST {
 
     std::string dump2str(std::string& str0) override
     {
-        std::string identtmp_num = ident + '_' + std::to_string(symTabCnt);
+        std::string identtmp_num = ident + '_' + std::to_string(allsymTabCnt);
         str0 += " @";
         str0 += identtmp_num;
         str0 += " = alloc i32\n";
