@@ -771,11 +771,11 @@ class LAndExp : public BaseAST {
                 tmp2 = son[i - 1]->dump2str(str0);
             }
 
-            // if (son[i-1]->val == 0)
-            //     return "0";
-            // else if (son[i+1]->val == 0)
-            //     return "0";
-            // return "1";
+            if (son[i-1]->val == 0)
+                return "0";
+            else if (son[i+1]->val == 0)
+                return "0";
+            return "1";
 
             str0 += " %";
             str0 += std::to_string(expNumCnt++);
@@ -835,11 +835,11 @@ class LOrExp : public BaseAST {
                 tmp2 = son[i - 1]->dump2str(str0);
             }
 
-            // if (son[i-1]->val)
-            //     return "1";
-            // else if (son[i+1]->val)
-            //     return "1";
-            // return "0";
+            if (son[i-1]->val)
+                return "1";
+            else if (son[i+1]->val)
+                return "1";
+            return "0";
 
             str0 += " %";
             str0 += std::to_string(expNumCnt++);
