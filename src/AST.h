@@ -121,9 +121,11 @@ class BlockAST : public  BaseAST {
         total_table[current_table] = record_table;
         symTabCnt += 1;
 
+        std::cout << "******* block item num: " << son.size() << " *********\n";
         for(auto iter = son.begin(); iter != son.end(); iter++)
         {
             (*iter)->dump2str(str0);
+            std::cout << str0 << std::endl;
             if ((*iter)->ret)
                 break;
         }
@@ -150,7 +152,11 @@ class myBlockItem : public BaseAST {
     std::string dump2str(std::string &str0) override
     {
         for(auto iter = son.begin(); iter != son.end(); iter++)
+        {
             (*iter)->dump2str(str0);
+            if ((*iter)->ret)
+                break;
+        }
         return "";
     }
 };
@@ -166,8 +172,6 @@ class BlockItem: public BaseAST {
         if(son[0]->type == _Decl)
             son[0]->dump2str(str0);
         else son[0]->Dump(str0);
-        if (son[0]->ret)
-            ret = true;
         return "";
     }
 };
@@ -182,13 +186,19 @@ class StmtAST : public BaseAST {
     {
         if (ret)
         {
+            std::cout << "------- Stmt Return -------\n";
             if (son.size() > 0)
             {
-                std::string tmp = exp->dump2str(str0);
-                str0 += " ret ";
-                str0 += tmp;
-                str0 += "\n";
-                std::cout << str0 << std::endl;
+                if (son[0]->type == _Block)
+                    son[0]->Dump(str0);
+                else
+                {
+                    std::string tmp = exp->dump2str(str0);
+                    str0 += " ret ";
+                    str0 += tmp;
+                    str0 += "\n";
+                    std::cout << str0 << std::endl;
+                }     
             }
             else
             {

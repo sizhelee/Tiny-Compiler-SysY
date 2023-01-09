@@ -100,6 +100,7 @@ Block
   : '{' myBlockItem '}' {
     auto ast = new BlockAST();
     ast->son = $2->son;
+    ast->ret = $2->ret;
     $$ = ast;
   }
   ;
@@ -107,6 +108,7 @@ Block
 myBlockItem
   : myBlockItem BlockItem {
     $1->son.push_back($2);
+    $1->ret = $1->ret || $2->ret; 
     $$ = $1;
   }
   | {
@@ -119,6 +121,7 @@ BlockItem
   : Decl {
     auto ast = new BlockItem();
     ast->son.push_back($1);
+    ast->ret = false;
     $$ = ast;
   }
   | Stmt {
@@ -159,6 +162,7 @@ Stmt
   | Block {
     auto ast = new StmtAST();
     ast->son.push_back($1);
+    ast->ret = $1->ret;
     $$ = ast;
   }
   | RETURN ';' {
