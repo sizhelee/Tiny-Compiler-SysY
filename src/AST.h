@@ -771,11 +771,11 @@ class LAndExp : public BaseAST {
                 tmp2 = son[i - 1]->dump2str(str0);
             }
 
-            if (son[i-1]->val == 0)
-                return "0";
-            else if (son[i+1]->val == 0)
-                return "0";
-            return "1";
+            // if (son[i-1]->val == 0)
+            //     return "0";
+            // else if (son[i+1]->val == 0)
+            //     return "0";
+            // return "1";
 
             str0 += " %";
             str0 += std::to_string(expNumCnt++);
@@ -835,11 +835,11 @@ class LOrExp : public BaseAST {
                 tmp2 = son[i - 1]->dump2str(str0);
             }
 
-            if (son[i-1]->val)
-                return "1";
-            else if (son[i+1]->val)
-                return "1";
-            return "0";
+            // if (son[i-1]->val)
+            //     return "1";
+            // else if (son[i+1]->val)
+            //     return "1";
+            // return "0";
 
             str0 += " %";
             str0 += std::to_string(expNumCnt++);
@@ -974,36 +974,36 @@ class LVal: public BaseAST {
     {
         type = _LVal; 
 
-        std::string identtmp_num;
-        int searchdep = symTabCnt;
-        std::map<std::string, std::pair<int, int>> *search_table = current_table;
+        // std::string identtmp_num;
+        // int searchdep = symTabCnt;
+        // std::map<std::string, std::pair<int, int>> *search_table = current_table;
                 
-        while (searchdep > 0)
-        {
-            int flag = 0;
-            for (int ident_idx = allsymTabCnt; ident_idx >= searchdep; ident_idx--)
-            {
-                identtmp_num = ident + '_' + std::to_string(ident_idx);
-                if ((*search_table).find(identtmp_num) != (*search_table).end())
-                    flag = 1;
-                if (flag)
-                    break;
-            }
-            if (flag)
-            {
-                auto sym_label_val = (*search_table)[identtmp_num];
-                val = sym_label_val.first;
-                break;
-            }
-            search_table = total_table[search_table];
-            searchdep -= 1;
-        }
+        // while (searchdep > 0)
+        // {
+        //     int flag = 0;
+        //     for (int ident_idx = allsymTabCnt; ident_idx >= searchdep; ident_idx--)
+        //     {
+        //         identtmp_num = ident + '_' + std::to_string(ident_idx);
+        //         if ((*search_table).find(identtmp_num) != (*search_table).end())
+        //             flag = 1;
+        //         if (flag)
+        //             break;
+        //     }
+        //     if (flag)
+        //     {
+        //         auto sym_label_val = (*search_table)[identtmp_num];
+        //         val = sym_label_val.first;
+        //         break;
+        //     }
+        //     search_table = total_table[search_table];
+        //     searchdep -= 1;
+        // }
 
-        if (searchdep == 0)
-        {
-            auto sym_label_val = symbol_table[ident];
-            val = sym_label_val.first;
-        }
+        // if (searchdep == 0)
+        // {
+        //     auto sym_label_val = symbol_table[ident];
+        //     val = sym_label_val.first;
+        // }
     }
     void Dump(std::string& str0) const override {}
 
