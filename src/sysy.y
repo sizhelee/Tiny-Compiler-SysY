@@ -399,8 +399,10 @@ LAndExp
     $$ = ast;
   }
   | LAndExp AND EqExp {
-    if ($1->val && $3->val)
-      $1->val = 1;
+    if (!$1->val)
+      $1->val = 0;
+    else if (!$3->val)
+      $3->val = 0;
     else $1->val = 0;
     $1->son.push_back($2);
     $1->son.push_back($3);
@@ -416,8 +418,10 @@ LOrExp
     $$ = ast;
   }
   | LOrExp OR LAndExp {
-    if ($1->val || $3->val)
+    if ($1->val)
       $1->val = 1;
+    else if ($3->val)
+      $3->val = 1;
     else $1->val = 0;
     $1->son.push_back($2);
     $1->son.push_back($3);
