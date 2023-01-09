@@ -402,8 +402,8 @@ LAndExp
     if (!$1->val)
       $1->val = 0;
     else if (!$3->val)
-      $3->val = 0;
-    else $1->val = 0;
+      $1->val = 0;
+    else $1->val = 1;
     $1->son.push_back($2);
     $1->son.push_back($3);
     $$ = $1;
@@ -421,7 +421,7 @@ LOrExp
     if ($1->val)
       $1->val = 1;
     else if ($3->val)
-      $3->val = 1;
+      $1->val = 1;
     else $1->val = 0;
     $1->son.push_back($2);
     $1->son.push_back($3);
