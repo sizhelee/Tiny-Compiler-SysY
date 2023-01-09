@@ -17,10 +17,11 @@ enum TYPE{
   _InitVal, 
 
 };
-extern int expNumCnt, symTabCnt, ifNumCnt, allsymTabCnt;
+extern int expNumCnt, symTabCnt, ifNumCnt, whileNumCnt, allsymTabCnt, brctNumCnt;
 extern std::map<std::string, std::pair<int, int>> symbol_table;
 extern std::map<std::string, std::pair<int, int>> *current_table;
 extern std::map<std::map<std::string, std::pair<int, int>>*, std::map<std::string, std::pair<int, int>>*> total_table;
+extern std::string now_while_end, now_while_entry;
 
 // 所有 AST 的基类
 class BaseAST {
@@ -30,7 +31,8 @@ class BaseAST {
     TYPE type;
     int val;
     char op;
-    bool isint = false, ret = false, isif = false;
+    bool isint = false, ret = false, isif = false, iswhile = false;
+    bool isbreak = false, iscontinue = false;
     std::string ident;
 
     BaseAST() = default;
@@ -260,6 +262,78 @@ class StmtAST : public BaseAST {
             str0 += "\%end_";
             str0 += std::to_string(ifNumCnt_tmp);
             str0 += ":\n";
+        }
+
+        else if (iswhile)
+        {
+            std::cout << "@@@@@@@ Stmt WHILE statement @@@@@@@\n";
+            int whileNumCnt_tmp = whileNumCnt;
+            whileNumCnt += 1;
+            std::string now_while_end_tmp = now_while_end;
+            std::string now_while_entry_tmp = now_while_entry;
+
+            now_while_end = "\%while_end_" + std::to_string(whileNumCnt_tmp);
+            now_while_entry = "\%while_entry_" + std::to_string(whileNumCnt_tmp);
+
+            str0 += " jump \%while_entry_";
+            str0 += std::to_string(whileNumCnt_tmp);
+            str0 += "\n";
+
+            str0 += "\%while_entry_";
+            str0 += std::to_string(whileNumCnt_tmp);
+            str0 += ":\n";
+
+            std::string tmp1 = son[0]->dump2str(str0);
+            str0 += " br ";
+            str0 += tmp1;
+            str0 += ", \%while_body_";
+            str0 += std::to_string(whileNumCnt_tmp);
+            str0 += ", \%while_end_";
+            str0 += std::to_string(whileNumCnt_tmp);
+            str0 += "\n";
+
+            str0 += "\%while_body_";
+            str0 += std::to_string(whileNumCnt_tmp);
+            str0 += ":\n";
+            son[1]->Dump(str0);
+
+            if (!son[1]->ret)
+            {
+                str0 += " jump \%while_entry_";
+                str0 += std::to_string(whileNumCnt_tmp);
+                str0 += "\n";
+            }
+
+            str0 += "\%while_end_";
+            str0 += std::to_string(whileNumCnt_tmp);
+            str0 += ":\n";
+
+            now_while_end = now_while_end_tmp;
+            now_while_entry = now_while_entry_tmp;
+        }
+
+        else if (isbreak)
+        {
+            str0 += " jump ";
+            str0 += now_while_end;
+            str0 += "\n";
+
+            str0 += "\%while_body1_";
+            str0 += std::to_string(brctNumCnt);
+            str0 += ":\n";
+            brctNumCnt += 1;
+        }
+
+        else if (iscontinue)
+        {
+            str0 += " jump ";
+            str0 += now_while_entry;
+            str0 += "\n";
+
+            str0 += "\%while_body1_";
+            str0 += std::to_string(brctNumCnt);
+            str0 += ":\n";
+            brctNumCnt += 1;
         }
 
         else if (son.size() == 0)
