@@ -970,15 +970,9 @@ class ConstExp: public BaseAST {
 class LVal: public BaseAST {
     public:
     std::string ident;
-    LVal()  { type = _LVal; }
-    void Dump(std::string& str0) const override {}
-
-    std::string dump2str(std::string& str0) override
+    LVal()  
     {
-        std::cout << "******** LVal *********\n";
-        // std::cout << symbol_table[ident] << " ********\n";
-        // val = symbol_table[ident];
-        // // return std::to_string(val);
+        type = _LVal; 
 
         std::string identtmp_num;
         int searchdep = symTabCnt;
@@ -1010,6 +1004,15 @@ class LVal: public BaseAST {
             auto sym_label_val = symbol_table[ident];
             val = sym_label_val.first;
         }
+    }
+    void Dump(std::string& str0) const override {}
+
+    std::string dump2str(std::string& str0) override
+    {
+        std::cout << "******** LVal *********\n";
+        // std::cout << symbol_table[ident] << " ********\n";
+        // val = symbol_table[ident];
+        // // return std::to_string(val);
 
         return ident;
         // return "";
