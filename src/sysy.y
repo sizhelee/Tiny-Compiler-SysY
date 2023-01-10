@@ -61,6 +61,12 @@ using namespace std;
 // $1 指代规则里第一个符号的返回值, 也就是 FuncDef 的返回值
 CompUnit
   : CompUnit FuncDef {
+    std::cout << "CompUnit -> CompUnit FuncDef" << std::endl;
+    $1->son.push_back($2);
+    $$ = $1;
+  }
+  | CompUnit Decl {
+    std::cout << "CompUnit -> CompUnit Decl" << std::endl;
     $1->son.push_back($2);
     $$ = $1;
   }
@@ -68,6 +74,17 @@ CompUnit
     // auto comp_unit = make_unique<CompUnitAST>();
     // comp_unit->func_def = unique_ptr<BaseAST>($1);
     // ast = move(comp_unit);
+    std::cout << "CompUnit -> FuncDef" << std::endl;
+    auto tmpast = new CompUnitAST();
+    tmpast->func_def = unique_ptr<BaseAST>($1);
+    tmpast->son.push_back($1);
+    $$ = tmpast;
+
+    auto newtmp = unique_ptr<BaseAST>(tmpast);
+    ast = move(newtmp);
+  } 
+  | Decl {
+    std::cout << "CompUnit -> Decl" << std::endl;
     auto tmpast = new CompUnitAST();
     tmpast->func_def = unique_ptr<BaseAST>($1);
     tmpast->son.push_back($1);
@@ -90,6 +107,7 @@ CompUnit
 // 这种写法会省下很多内存管理的负担
 FuncDef
   : FuncType IDENT '(' ')' Block {
+    std::cout << "FuncDef -> FuncType IDENT ( ) Block" << std::endl;
     auto ast = new FuncDefAST();
     ast->func_type = unique_ptr<BaseAST>($1);
     ast->ident = *unique_ptr<string>($2);
@@ -99,6 +117,7 @@ FuncDef
     $$ = ast;
   }
   | FuncType IDENT '(' FuncFParams ')' Block {
+    std::cout << "FuncDef -> FuncType IDENT ( FuncFParams ) Block" << std::endl;
     auto ast = new FuncDefAST();
     ast->func_type = unique_ptr<BaseAST>($1);
     ast->ident = *unique_ptr<string>($2);
@@ -113,12 +132,14 @@ FuncDef
 
 FuncFParams
   : FuncFParam {
+    std::cout << "FuncFParams -> FuncFParam" << std::endl;
     auto ast = new FuncFParamsAST();
     ast->son.push_back($1);
     ast->ident = $1->ident;
     $$ = ast;
   }
   | FuncFParams ',' FuncFParam {
+    std::cout << "FuncFParams -> FuncFParams , FuncFParam" << std::endl;
     $1->son.push_back($3);
     $$ = $1;
   }
@@ -126,6 +147,7 @@ FuncFParams
 
 FuncFParam
   : BType IDENT {
+    std::cout << "FuncFParam -> BType IDENT" << std::endl;
     auto ast = new FuncFParamAST();
     ast->son.push_back($1);
     ast->ident = *unique_ptr<string>($2);
@@ -134,12 +156,14 @@ FuncFParam
 // 同上, 不再解释
 FuncType
   : INT {
+    std::cout << "FuncType -> INT" << std::endl;
     auto ast = new FuncTypeAST();
     string str = "int";
     ast->func_type = str;
     $$ = ast;
   }
   | VOID {
+    std::cout << "FuncType -> VOID" << std::endl;
     auto ast = new FuncTypeAST();
     string str = "void";
     ast->func_type = str;
@@ -149,6 +173,7 @@ FuncType
 
 Block
   : '{' myBlockItem '}' {
+    std::cout << "Block -> { myBlockItem }" << std::endl;
     auto ast = new BlockAST();
     ast->son = $2->son;
     ast->ret = $2->ret;
@@ -158,11 +183,13 @@ Block
 
 myBlockItem
   : myBlockItem BlockItem {
+    std::cout << "myBlockItem -> myBlockItem BlockItem" << std::endl;
     $1->son.push_back($2);
     $1->ret = $1->ret || $2->ret; 
     $$ = $1;
   }
   | {
+    std::cout << "myBlockItem -> " << std::endl;
     auto ast = new myBlockItem();
     $$ = ast;
   }
@@ -170,12 +197,14 @@ myBlockItem
 
 BlockItem
   : Decl {
+    std::cout << "BlockItem -> Decl" << std::endl;
     auto ast = new BlockItem();
     ast->son.push_back($1);
     ast->ret = false;
     $$ = ast;
   }
   | Stmt {
+    std::cout << "BlockItem -> Stmt" << std::endl;
     auto ast = new BlockItem();
     ast->son.push_back($1);
     ast->ret = $1->ret;
@@ -185,6 +214,7 @@ BlockItem
 
 Stmt
   : RETURN Exp ';' {
+    std::cout << "Stmt -> RETURN Exp ;" << std::endl;
     auto ast = new StmtAST();
     ast->val = $2->val;
     ast->exp = unique_ptr<BaseAST>($2);
@@ -193,6 +223,7 @@ Stmt
     $$ = ast;
   }
   | LVal '=' Exp ';' {
+    std::cout << "Stmt -> LVal = Exp ;" << std::endl;
     auto ast = new StmtAST();
     ast->val = $3->val;
     $1->val = $3->val;
@@ -202,26 +233,31 @@ Stmt
     $$ = ast;
   }
   | Exp ';' {
+    std::cout << "Stmt -> Exp ;" << std::endl;
     auto ast = new StmtAST();
     ast->son.push_back($1);
     $$ = ast;
   }
   | ';' {
+    std::cout << "Stmt -> ;" << std::endl;
     auto ast = new StmtAST();
     $$ = ast;
   }
   | Block {
+    std::cout << "Stmt -> Block ;" << std::endl;
     auto ast = new StmtAST();
     ast->son.push_back($1);
     ast->ret = $1->ret;
     $$ = ast;
   }
   | RETURN ';' {
+    std::cout << "Stmt -> RETURN ;" << std::endl;
     auto ast = new StmtAST();
     ast->ret = true;
     $$ = ast;
   }
   | IF '(' Exp ')' Stmt ELSE Stmt {
+    std::cout << "Stmt -> IF ( Exp ) Stmt ELSE Stmt" << std::endl;
     auto ast = new StmtAST();
     ast->isif = true;
     ast->son.push_back($3);
@@ -230,6 +266,7 @@ Stmt
     $$ = ast;
   }
   | IF '(' Exp ')' Stmt {
+    std::cout << "Stmt -> IF ( Exp ) Stmt" << std::endl;
     auto ast = new StmtAST();
     ast->isif = true;
     ast->son.push_back($3);
@@ -237,6 +274,7 @@ Stmt
     $$ = ast;
   }
   | WHILE '(' Exp ')' Stmt {
+    std::cout << "Stmt -> WHILE ( Exp ) Stmt" << std::endl;
     auto ast = new StmtAST();
     ast->iswhile = true;
     ast->son.push_back($3);
@@ -244,11 +282,13 @@ Stmt
     $$ = ast;
   }
   | BREAK {
+    std::cout << "Stmt -> BREAK" << std::endl;
     auto ast = new StmtAST();
     ast->isbreak = true;
     $$ = ast;
   }
   | CONTINUE {
+    std::cout << "Stmt -> CONTINUE" << std::endl;
     auto ast = new StmtAST();
     ast->iscontinue = true;
     $$ = ast;
@@ -257,6 +297,7 @@ Stmt
 
 Exp
   : LOrExp {
+    std::cout << "Exp -> LOrExp" << std::endl;
     auto ast = new ExpAST();
     ast->val = $1->val;
     ast->son.push_back($1);
@@ -266,6 +307,7 @@ Exp
 
 PrimaryExp
   : '(' Exp ')' {
+    std::cout << "( Exp )" << std::endl;
     auto ast = new PrimaryExp();
     ast->exp = unique_ptr<BaseAST>($2);
     ast->val = $2->val;
@@ -273,6 +315,7 @@ PrimaryExp
     $$ = ast;
   }
   | Number {
+    std::cout << "PrimaryExp -> Number" << std::endl;
     auto ast = new PrimaryExp();
     ast->val = $1->val;
     cout << "******** PrimaryExp-Number: " << ast->val << " ********" << endl;
@@ -280,6 +323,7 @@ PrimaryExp
     $$ = ast;
   }
   | LVal {
+    std::cout << "PrimaryExp -> LVal" << std::endl;
     auto ast = new PrimaryExp();
     ast->val = $1->val;
     cout << "******** PrimaryExp-Lval: " << ast->val << " ********" << endl;
@@ -290,6 +334,7 @@ PrimaryExp
 
 Number
   : INT_CONST {
+    std::cout << "Number -> INT_CONST" << std::endl;
     auto ast = new Number();
     ast->val = $1;
     ast->isint = true;
@@ -299,6 +344,7 @@ Number
 
 UnaryExp 
   : PrimaryExp{
+    std::cout << "UnaryExp -> PrimaryExp" << std::endl;
     auto ast = new UnaryExp();
     ast->val = $1->val;
     ast->isint = $1->isint;
@@ -306,6 +352,7 @@ UnaryExp
     $$ = ast;
   }
   | UnaryOp UnaryExp{
+    std::cout << "UnaryExp -> UnaryOp UnaryExp" << std::endl;
     auto ast = new UnaryExp();
     ast->son.push_back($1);
     ast->son.push_back($2);
@@ -323,12 +370,14 @@ UnaryExp
     $$ = ast;
   }
   | IDENT '(' ')' {
+    std::cout << "UnaryExp -> IDENT ( )" << std::endl;
     auto ast = new UnaryExp();
     ast->isident = true;
     ast->ident = *unique_ptr<string>($1);
     $$ = ast;
   }
   | IDENT '(' FuncRParams ')' {
+    std::cout << "UnaryExp -> IDENT ( FuncRParams )" << std::endl;
     auto ast = new UnaryExp();
     ast->isident = true;
     ast->ident = *unique_ptr<string>($1);
@@ -339,11 +388,13 @@ UnaryExp
 
 FuncRParams
   : Exp {
+    std::cout << "FuncRParams -> Exp" << std::endl;
     auto ast = new FuncRParamsAST();
     ast->son.push_back($1);
     $$ = ast;
   }
   | FuncRParams ',' Exp {
+    std::cout << "FuncRParams -> FuncRParams , Exp" << std::endl;
     $1->son.push_back($3);
     $$ = $1;
   }
@@ -525,11 +576,13 @@ LOrExp
 
 Decl
   : ConstDecl {
+    std::cout << "Decl -> ConstDecl" << std::endl;
     auto ast = new Decl();
     ast->son.push_back($1);
     $$ = ast;
   }
   | VarDecl {
+    std::cout << "Decl -> VarDecl" << std::endl;
     auto ast = new Decl();
     ast->son.push_back($1);
     $$ = ast;
@@ -539,6 +592,7 @@ Decl
 
 ConstDecl
   : CONST BType myConstDef ';' {
+    std::cout << "ConstDecl -> CONST BType myConstDef ;" << std::endl;
     auto ast = new ConstDecl();
     ast->son.push_back($2);
     ast->son.push_back($3);
@@ -549,10 +603,12 @@ ConstDecl
 
 myConstDef
   : myConstDef ',' ConstDef {
+    std::cout << "myConstDef -> myConstDef , ConstDef" << std::endl;
     $1->son.push_back($3);
     $$ = $1;
   }
   | ConstDef {
+    std::cout << "myConstDef -> ConstDef" << std::endl;
     auto ast = new myConstDef();
     ast->son.push_back($1);
     $$ = ast;
@@ -562,11 +618,13 @@ myConstDef
 
 BType
   : INT {
+    std::cout << "BType -> INT" << std::endl;
     auto ast = new BType();
     ast->ident = "int";
     $$ = ast;
   }
   | VOID {
+    std::cout << "BType -> VOID" << std::endl;
     auto ast = new BType();
     ast->ident = "void";
     $$ = ast;
@@ -576,6 +634,7 @@ BType
 
 ConstDef
   : IDENT '=' ConstInitVal {
+    std::cout << "ConstDef -> IDENT = ConstInitVal" << std::endl;
     symbol_table[*$1] = make_pair($3->val, 1);
     auto ast = new ConstDef();
     ast->ident = *unique_ptr<string>($1);
@@ -589,6 +648,7 @@ ConstDef
 
 ConstInitVal
   : ConstExp {
+    std::cout << "ConstInitVal -> ConstExp" << std::endl;
     auto ast = new ConstInitVal();
     ast->val = $1->val;
     ast->son.push_back($1);
@@ -599,6 +659,7 @@ ConstInitVal
 
 LVal
   : IDENT {
+    std::cout << "LVal -> IDENT" << std::endl;
     auto ast = new LVal();
     ast->ident = *unique_ptr<string>($1);
     ast->val = symbol_table[ast->ident].first;
@@ -610,6 +671,7 @@ LVal
 
 ConstExp
   : Exp {
+    std::cout << "ConstExp -> Exp" << std::endl;
     auto ast = new ConstExp();
     ast->val = $1->val;
     ast->son.push_back($1);
@@ -620,6 +682,7 @@ ConstExp
 
 VarDecl
   : BType myVarDef ';' {
+    std::cout << "VarDecl -> BType myVarDef ;" << std::endl;
     auto ast = new VarDecl();
     ast->son.push_back($1);
     ast->son.push_back($2);
@@ -630,11 +693,13 @@ VarDecl
 
 myVarDef
   : VarDef {
+    std::cout << "myVarDef -> VarDef" << std::endl;
     auto ast = new myVarDef();
     ast->son.push_back($1);
     $$ = ast;
   }
   | myVarDef ',' VarDef {
+    std::cout << "myVarDef -> myVarDef , VarDef" << std::endl;
     $1->son.push_back($3);
     $$ = $1;
   }
@@ -643,12 +708,14 @@ myVarDef
 
 VarDef
   : IDENT {
+    std::cout << "VarDef -> IDENT" << std::endl;
     auto ast = new VarDef();
     ast->ident = *unique_ptr<string>($1);
     symbol_table[ast->ident] = make_pair(0x7fffffff, -1);
     $$ = ast;
   }
   | IDENT '=' InitVal {
+    std::cout << "VarDef -> IDENT = InitVal" << std::endl;
     auto ast = new VarDef();
     ast->ident = *unique_ptr<string>($1);
     ast->val = $3->val;
@@ -661,6 +728,7 @@ VarDef
 
 InitVal
   : Exp {
+    std::cout << "InitVal -> Exp" << std::endl;
     auto ast = new InitVal();
     ast->son.push_back($1);
     ast->val = $1->val;

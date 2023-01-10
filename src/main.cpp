@@ -32,6 +32,7 @@ map<string, pair<int, int>> *current_table;
 map<map<string, pair<int, int>>*,map<string, pair<int, int>>*> total_table; // 记录每个符号表的父亲，虽然这个结构很丑
 
 map<string, string> func_table;
+map<string, pair<int, int>> glob_table;
 
 // 函数声明略
 void Visit(const koopa_raw_program_t &program);

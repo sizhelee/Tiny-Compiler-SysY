@@ -24,6 +24,7 @@ extern std::map<std::map<std::string, std::pair<int, int>>*, std::map<std::strin
 extern std::string now_while_end, now_while_entry;
 
 extern std::map<std::string, std::string> func_table;
+extern std::map<std::string, std::pair<int, int>> glob_table;
 
 // 所有 AST 的基类
 class BaseAST {
@@ -84,13 +85,9 @@ class CompUnitAST : public BaseAST {
 
         symTabCnt += 1;
         allsymTabCnt += 1;
-        std::cout << "!!!!!!!!!!!!!! Func Num: " << son.size() << " !!!!!!!!!!!!!!!!!\n";
         for (auto iter = son.begin(); iter != son.end(); iter++)
         {
-            std::cout << "!!!!!!!!!!!!!! AAAA !!!!!!!!!!!!!!!!\n";
-            std::cout << (*iter)->type << std::endl;
             (*iter)->Dump(str0);
-            std::cout << "!!!!!!!!!!!!!! BBBB !!!!!!!!!!!!!!!!\n";
         }
         symTabCnt -= 1;
         // func_def->Dump(str0);
@@ -1341,7 +1338,10 @@ class LVal: public BaseAST {
 class VarDecl: public BaseAST {
     public:
     VarDecl()   { type = _VarDecl;  }
-    void Dump(std::string &str0) const override {}
+    void Dump(std::string &str0) const override {
+        if (son[1]->type == _myVarDef)
+            son[1]->Dump(str0);
+    }
 
     std::string dump2str(std::string &str0) override 
     {
@@ -1371,14 +1371,39 @@ class VarDef: public BaseAST {
     int varval;
 
     VarDef()    { type = _VarDef;   }
-    void Dump(std::string& str0) const override {}
+    void Dump(std::string& str0) const override 
+    {
+        std::string tmp = "@" + ident + "_" + std::to_string(allsymTabCnt);
+        str0 += "global ";
+        str0 += tmp;
+        str0 += " = alloc i32, ";
+
+        if (son.size() > 0)
+        {
+            std::string globalVarVal = son[0]->dump2str(str0);
+            str0 += globalVarVal;
+            str0 += "\n";
+            (*current_table)[tmp] = std::make_pair(son[0]->val, 0);
+            glob_table[tmp] = std::make_pair(son[0]->val, 0);
+        }
+        else
+        {
+            str0 += "zeroinit\n";
+            (*current_table)[tmp] = std::make_pair(0, 0);
+            glob_table[tmp] = std::make_pair(0, 0);
+        }
+    }
 
     std::string dump2str(std::string& str0) override
     {
         std::string identtmp_num = ident + '_' + std::to_string(allsymTabCnt);
-        str0 += " @";
-        str0 += identtmp_num;
-        str0 += " = alloc i32\n";
+        
+        if (glob_table.find("@"+identtmp_num) == glob_table.end())
+        {
+            str0 += " @";
+            str0 += identtmp_num;
+            str0 += " = alloc i32\n";
+        }
 
         if (son.size() > 0)
         {
