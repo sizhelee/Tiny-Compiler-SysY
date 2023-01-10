@@ -63,6 +63,25 @@ class CompUnitAST : public BaseAST {
     void Dump(std::string& str0) const override {
         current_table = &symbol_table;
         str0 = "";
+
+        str0 += "decl @getint(): i32\n";
+        str0 += "decl @getch(): i32\n";
+        str0 += "decl @getarray(*i32): i32\n";
+        str0 += "decl @putint(i32)\n";
+        str0 += "decl @putch(i32)\n";
+        str0 += "decl @putarray(i32, *i32)\n";
+        str0 += "decl @starttime()\n";
+        str0 += "decl @stoptime()\n";
+
+        func_table["getint"] = "int";
+        func_table["getch"] = "int";
+        func_table["getarray"] = "int";
+        func_table["putint"] = "void";
+        func_table["putch"] = "void";
+        func_table["putarray"] = "void";
+        func_table["starttime"] = "void";
+        func_table["stoptime"] = "void";
+
         symTabCnt += 1;
         allsymTabCnt += 1;
         std::cout << "!!!!!!!!!!!!!! Func Num: " << son.size() << " !!!!!!!!!!!!!!!!!\n";
