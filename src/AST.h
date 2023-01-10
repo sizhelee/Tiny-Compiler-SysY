@@ -14,7 +14,7 @@ enum TYPE{
   _EqExp, _LAndExp, _LOrExp, _LT, _GT, _LE, _GE, _AND, _OR, _EQ, _NE,
   _Decl, _ConstDecl, _BType, _ConstDef, _myConstDef, _ConstInitVal, _Block, 
   _BlockItem, _myBlockItem, _LVal, _ConstExp, _VarDecl, _myVarDef, _VarDef, 
-  _InitVal, 
+  _InitVal, _FuncFParamsAST, _FuncFParamAST, _FuncRParamsAST, 
 
 };
 extern int expNumCnt, symTabCnt, ifNumCnt, whileNumCnt, allsymTabCnt, brctNumCnt;
@@ -22,6 +22,8 @@ extern std::map<std::string, std::pair<int, int>> symbol_table;
 extern std::map<std::string, std::pair<int, int>> *current_table;
 extern std::map<std::map<std::string, std::pair<int, int>>*, std::map<std::string, std::pair<int, int>>*> total_table;
 extern std::string now_while_end, now_while_entry;
+
+extern std::map<std::string, std::string> func_table;
 
 // 所有 AST 的基类
 class BaseAST {
@@ -31,6 +33,7 @@ class BaseAST {
     TYPE type;
     int val;
     char op;
+    bool isident = false;
     bool isint = false, ret = false, isif = false, iswhile = false;
     bool isbreak = false, iscontinue = false;
     std::string ident;
@@ -60,7 +63,18 @@ class CompUnitAST : public BaseAST {
     void Dump(std::string& str0) const override {
         current_table = &symbol_table;
         str0 = "";
-        func_def->Dump(str0);
+        symTabCnt += 1;
+        allsymTabCnt += 1;
+        std::cout << "!!!!!!!!!!!!!! Func Num: " << son.size() << " !!!!!!!!!!!!!!!!!\n";
+        for (auto iter = son.begin(); iter != son.end(); iter++)
+        {
+            std::cout << "!!!!!!!!!!!!!! AAAA !!!!!!!!!!!!!!!!\n";
+            std::cout << (*iter)->type << std::endl;
+            (*iter)->Dump(str0);
+            std::cout << "!!!!!!!!!!!!!! BBBB !!!!!!!!!!!!!!!!\n";
+        }
+        symTabCnt -= 1;
+        // func_def->Dump(str0);
     }
 };
 
@@ -80,9 +94,19 @@ class FuncDefAST : public BaseAST {
     void Dump(std::string& str0) const override {
         str0 += "fun @";
         str0 += ident;
-        str0 += "(): ";
-        std::cout << "fun @" << ident << "(): ";
+        func_table[ident] = func_type->dump2str(str0);
+        str0 += "(";
+
+        if (son.size() == 3)
+            son[1]->Dump(str0);
+        str0 += ")";
+        // std::cout << "fun @" << ident << "(): ";
         func_type->Dump(str0);
+        // std::cout << "*********** param type: " << func_type << " ************\n";
+        // if(func_type == "int")
+        //     str0 += "i32";
+        // else if (func_type == "void")
+        //     str0 += "";
 
         str0 += " { \n";
         std::cout << " { "<<std::endl;
@@ -90,9 +114,56 @@ class FuncDefAST : public BaseAST {
         str0 += "\%entry:\n";
         std::cout << "\%entry" << ":" << std::endl;
 
+        std::map<std::string, std::pair<int, int>> new_table;
+        std::map<std::string, std::pair<int, int>>* record_table = current_table;
+        current_table = &new_table;
+        total_table[current_table] = record_table;
+        symTabCnt += 1;
+        allsymTabCnt += 1;
+
+        if (son.size() == 3)
+        {
+            for (auto iter = son[1]->son.begin(); iter != son[1]->son.end(); iter++)
+            {
+                std::string tmp = (*iter)->dump2str(str0);
+                str0 += " @";
+                str0 += tmp;
+                str0 += "_";
+                str0 += std::to_string(allsymTabCnt);
+
+                str0 += " = alloc i32\n";
+                str0 += " store @";
+                str0 += tmp;
+                str0 += ", @";
+                str0 += tmp;
+                str0 += "_";
+                str0 += std::to_string(allsymTabCnt);
+                str0 += "\n";
+
+                std::string new_tab_name = tmp+"_"+std::to_string(allsymTabCnt);
+                (*current_table)[new_tab_name] = std::make_pair((*iter)->val, 0);
+            }
+        }
+
+        std::cout << "###### DEBUG SYM TABLE ######\n";
+        std::cout << "all tab num: " << allsymTabCnt << " ";
+        std::cout << "exist tab num: " << symTabCnt << std::endl;
+        for (auto iter = current_table->begin(); iter != current_table->end(); iter++)
+        {
+            std::cout << (*iter).first << " ";
+            std::cout << (*iter).second.first << std::endl;
+        }
+
         block->Dump(str0);
-        str0 += "}";
-        std::cout << "}";
+
+        if (func_type->dump2str(str0) == "void")
+            str0 += " ret \n";
+
+
+        str0 += "}\n";
+        std::cout << "}\n";
+        current_table = record_table;
+        symTabCnt -= 1;
     }
 };
 
@@ -104,8 +175,61 @@ class FuncTypeAST : public BaseAST {
     void Dump(std::string& str0) const override {
         if(func_type == "int")
         {
-            str0 += "i32";
-            std::cout << "i32";
+            str0 += ": i32";
+            std::cout << ": i32";
+        }
+        else if (func_type == "void")
+            str0 += " ";
+    }
+
+    std::string dump2str(std::string& str0) override {
+        return func_type;
+    }
+};
+
+
+class FuncFParamsAST : public BaseAST {
+    public:
+    FuncFParamsAST()    { type = _FuncFParamsAST;   }
+
+    void Dump(std::string& str0) const override {
+        int son_size = son.size();
+        for (int i = 0; i < son_size; i++)
+        {
+            son[i]->Dump(str0);
+            if (i != son_size - 1)
+                str0 += ", ";
+        }
+    }
+};
+
+
+class FuncFParamAST : public BaseAST {
+    public:
+    std::string ident;
+
+    void Dump(std::string &str0) const override {
+        str0 += "@" + ident;
+        str0 += ": ";
+        son[0]->Dump(str0);
+    }
+
+    std::string dump2str(std::string &str0) override {
+        return ident;
+    }
+};
+
+
+class FuncRParamsAST : public BaseAST {
+    public:
+    void Dump(std::string& str0) const override 
+    {
+        for (auto iter = son.begin(); iter != son.end(); iter++)
+        {
+            std::string tmp = (*iter)->dump2str(str0);
+            if (iter != son.begin())
+                str0 += ", ";
+            str0 += tmp;
         }
     }
 };
@@ -125,6 +249,7 @@ class BlockAST : public  BaseAST {
         allsymTabCnt += 1;
 
         std::cout << "******* block item num: " << son.size() << " *********\n";
+        
         for(auto iter = son.begin(); iter != son.end(); iter++)
         {
             (*iter)->dump2str(str0);
@@ -189,6 +314,7 @@ class StmtAST : public BaseAST {
         if (ret)
         {
             std::cout << "------- Stmt Return -------\n";
+            std::cout << str0;
             if (son.size() > 0)
             {
                 if (son[0]->type == _Block)
@@ -435,7 +561,82 @@ class UnaryExp : public BaseAST {
 
     std::string dump2str(std::string& str0) override {
         std::string tmp1, tmp2;
-        if(son[0]->type == _PrimaryExp)
+        if (isident)
+        {
+            std::cout << "@@@@ @@@@ CALL FUNCTION @@@@ @@@@\n";
+            std::cout << "IDENT: " << ident << " TYPE: " << func_table[ident] << std::endl;
+            std::string funcretreg;
+            if (func_table[ident] == "int")
+            {
+                funcretreg = "\%" + std::to_string(expNumCnt++);
+                if (son.size() > 0)
+                {
+                    std::vector<std::string> allFuncParams;
+                    for (auto iter = son[0]->son.begin(); iter != son[0]->son.end(); iter++)
+                    {
+                        std::string funcParam = (*iter)->dump2str(str0);
+                        allFuncParams.push_back(funcParam);
+                    }
+
+                    str0 += " ";
+                    str0 += funcretreg;
+                    str0 += " = call @";
+                    str0 += ident;
+                    str0 += "(";
+
+                    for (int i = 0; i < allFuncParams.size(); i++)
+                    {
+                        if (i)
+                            str0 += ", ";
+                        str0 += allFuncParams[i];
+                    }
+                    str0 += ")\n";
+                }
+                else 
+                {
+                    str0 += " ";
+                    str0 += funcretreg;
+                    str0 += " = call @";
+                    str0 += ident;
+                    str0 += "()\n";
+                }
+            }
+
+            else if (func_table[ident] == "void")
+            {
+                funcretreg = "";
+
+                if (son.size() > 0)
+                {
+                    std::vector<std::string> allFuncParams;
+                    for (auto iter = son[0]->son.begin(); iter != son[0]->son.end(); iter++)
+                    {
+                        std::string funcParam = (*iter)->dump2str(str0);
+                        allFuncParams.push_back(funcParam);
+                    }
+
+                    str0 += " call @";
+                    str0 += ident;
+                    str0 += "(";
+                    for (int i = 0; i < allFuncParams.size(); i++)
+                    {
+                        if (i)
+                            str0 += ", ";
+                        str0 += allFuncParams[i];
+                    }
+                    str0 += ")\n";
+                }
+                else
+                {
+                    str0 += " call @";
+                    str0 += ident;
+                    str0 += "()\n";
+                }
+            }
+
+            return funcretreg;
+        }
+        else if(son[0]->type == _PrimaryExp)
         {
             BaseAST* ptr = son[0]; 
             if(ptr->son[0]->type == _Number)
@@ -445,11 +646,21 @@ class UnaryExp : public BaseAST {
             else if (ptr->son[0]->type == _LVal)
             {
                 tmp1 = ptr->son[0]->dump2str(str0);
+                std::cout << "#### DEBUG #### tmp1: " << tmp1 << std::endl;
                 std::string identtmp = tmp1;
                 std::string identtmp_num;
                 int searchdep = symTabCnt;
                 std::map<std::string, std::pair<int, int>> *search_table = current_table;
                 
+                std::cout << "###### DEBUG SYM TABLE ######\n";
+                std::cout << "all tab num: " << allsymTabCnt << " ";
+                std::cout << "exist tab num: " << symTabCnt << std::endl;
+                for (auto iter = current_table->begin(); iter != current_table->end(); iter++)
+                {
+                    std::cout << (*iter).first << " ";
+                    std::cout << (*iter).second.first << std::endl;
+                }
+
                 while (searchdep > 0)
                 {
                     int flag = 0;
@@ -467,6 +678,17 @@ class UnaryExp : public BaseAST {
                     searchdep -= 1;
                 }
 
+                std::cout << "###### DEBUG SYM TABLE ######\n";
+                std::cout << "all tab num: " << allsymTabCnt << " ";
+                std::cout << "exist tab num: " << symTabCnt << std::endl;
+                std::cout << "search depth: " << searchdep << " ";
+                std::cout << "search for: " << identtmp_num << std::endl;
+                for (auto iter = search_table->begin(); iter != search_table->end(); iter++)
+                {
+                    std::cout << (*iter).first << " ";
+                    std::cout << (*iter).second.first << std::endl;
+                }
+
                 if (searchdep == 0)
                 {
                     auto sym_label_val = symbol_table[tmp1];
@@ -482,6 +704,7 @@ class UnaryExp : public BaseAST {
                     str0 += " = load @";
                     str0 += identtmp_num;
                     str0 += "\n";
+                    std::cout << str0;
                 }
                 else
                 {
@@ -707,8 +930,6 @@ class MulExp : public BaseAST {
             str0 += ", ";
             str0 += tmp3;
             str0 += "\n";
-
-            // std::cout << str0 << std::endl;
         }
         return tmp1;
     }
@@ -994,7 +1215,11 @@ class BType: public BaseAST {
     public:
     std::string ident;
     BType() { type = _BType;    }
-    void Dump(std::string& str0) const override {}
+    void Dump(std::string& str0) const override 
+    {
+        if(ident == "int")
+            str0 += "i32";
+    }
     std::string dump2str(std::string &str0) override 
     {
         return "";
