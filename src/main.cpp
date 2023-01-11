@@ -36,7 +36,7 @@ map<string, pair<int, int>> glob_table;
 
 string str1; // riscv str
 map<koopa_raw_value_t, int> stackForInsts;
-map<koopa_raw_function_t, int> mapFuncToSp;
+map<koopa_raw_function_t, int> mapFuncToSp, mapFuncToRa;
 koopa_raw_function_t curFunc;
 
 // 函数声明略
@@ -52,6 +52,9 @@ void Visit(const koopa_raw_store_t &rawStore);
 void Visit(const koopa_raw_load_t &load);
 void Visit(const koopa_raw_jump_t &jump);
 void Visit(const koopa_raw_branch_t &branch);
+void Visit(const koopa_raw_call_t &call);
+void Visit(const koopa_raw_func_arg_ref_t &funcArgRef);
+void Visit(const koopa_raw_global_alloc_t &myGlobalAlloc);
 
 int retValue(const koopa_raw_value_t &rawValue);
 int retValue(const koopa_raw_integer_t &rawInterger);
@@ -63,47 +66,47 @@ void Visit(const koopa_raw_program_t &program) {
     cout << "******** visit program ********" << endl;
   # endif
   // myPrint("  .text ");
-  cout << "  .text " << endl;
-  str1 += "  .text\n";
+  // cout << "  .text " << endl;
+  // str1 += "  .text\n";
 
   for (size_t i = 0; i < program.values.len; ++i) {
       // 正常情况下, 列表中的元素就是函数, 我们只不过是在确认这个事实
       // 当然, 你也可以基于 raw slice 的 kind, 实现一个通用的处理函数
       assert(program.values.kind == KOOPA_RSIK_VALUE);
       // 获取当前函数
-      koopa_raw_function_t value = (koopa_raw_function_t) program.values.buffer[i];
+      // koopa_raw_function_t value = (koopa_raw_function_t) program.values.buffer[i];
       // 进一步处理当前函数
       // myPrint(func->name);
 
-      cout << value->name << endl;
-      str1 += value->name;
-      str1 += "\n";
+      // cout << value->name << endl;
+      // str1 += value->name;
+      // str1 += "\n";
   }
 
   // myPrint("  .global ", false);
-  cout << "  .global ";
-  str1 += "  .global ";
+  // cout << "  .global ";
+  // str1 += "  .global ";
 
   for (size_t i = 0; i < program.funcs.len; ++i) {
       // 正常情况下, 列表中的元素就是函数, 我们只不过是在确认这个事实
       // 当然, 你也可以基于 raw slice 的 kind, 实现一个通用的处理函数
       assert(program.funcs.kind == KOOPA_RSIK_FUNCTION);
       // 获取当前函数
-      koopa_raw_function_t func = (koopa_raw_function_t) program.funcs.buffer[i];
+      // koopa_raw_function_t func = (koopa_raw_function_t) program.funcs.buffer[i];
 
       // 进一步处理当前函数
       // cout << "*******" << func->name << "*******" << endl;
-      for(int i = 1; i < strlen(func->name); i++)
-      {
-        char c = func->name[i]; 
-        cout << c;
-        // fprintf(yyout, "%c", c);
-        str1 += c;
-      }
+      // for(int i = 1; i < strlen(func->name); i++)
+      // {
+      //   char c = func->name[i]; 
+      //   cout << c;
+      //   // fprintf(yyout, "%c", c);
+      //   str1 += c;
+      // }
       // fprintf(yyout, "%s",func->name);
       // fprintf(yyout, "\n");
-      cout << endl;
-      str1 += "\n";
+      // cout << endl;
+      // str1 += "\n";
   }
 
   // 访问所有全局变量
@@ -125,7 +128,8 @@ void Visit(const koopa_raw_slice_t &slice) {
     switch (slice.kind) {
       case KOOPA_RSIK_FUNCTION: // 2
         // 访问函数
-        Visit(reinterpret_cast<koopa_raw_function_t>(ptr));
+        if(reinterpret_cast<koopa_raw_function_t>(ptr)->bbs.len != 0)
+          Visit(reinterpret_cast<koopa_raw_function_t>(ptr));
         break;
       case KOOPA_RSIK_BASIC_BLOCK: // 3
         // 访问基本块
@@ -149,20 +153,18 @@ void Visit(const koopa_raw_function_t &func) {
   # endif
   // 执行一些其他的必要操作
   // ...
-  for(int i = 1; i < strlen(func->name);i++)
-  {
-    char c = func->name[i]; 
-    cout<<c;
-    // fprintf(yyout, "%c",c);
-    str1 += c;
-  }
-  // myPrint(":");
-  cout << ":\n";
+  str1 += "  .text \n";
+  str1 += "  .global ";
+  string funcName = func->name;
+  str1 += funcName.erase(0, 1)+"\n";
+  str1 += funcName;
   str1 += ":\n";
 
   Visit(func->params);
 
   int spForEachInst = 0;
+  int spForRa = 0, spForFuncParams = 0;
+  int maxLenForArgs = 0;
   for (int i = 0; i < func->bbs.len; i++)
   {
     auto ptr = func->bbs.buffer[i];
@@ -173,21 +175,54 @@ void Visit(const koopa_raw_function_t &func) {
       koopa_raw_value_t bbInst = reinterpret_cast<koopa_raw_value_t>(ptr);
       if(bbInst->ty->tag != KOOPA_RTT_UNIT)
       {
-          cout<<spForEachInst<<endl;
-          cout<<bbInst<<endl;
-          stackForInsts[bbInst] = spForEachInst;
+          // cout<<spForEachInst<<endl;
+          // cout<<bbInst<<endl;
+          // stackForInsts[bbInst] = spForEachInst;
           spForEachInst += 4;
+      }
+      if(bbInst->kind.tag == KOOPA_RVT_CALL)
+      {
+          if(spForRa == 0){
+            spForRa = 4;
+          }
+          koopa_raw_slice_t funcArgs = bbInst->kind.data.call.args;
+          int lenForFuncArgs = funcArgs.len;
+          maxLenForArgs = max(lenForFuncArgs, maxLenForArgs);
       }
     }
   }
 
-  mapFuncToSp[func] = spForEachInst;
+  spForFuncParams = max(0, maxLenForArgs - 8)*4;
+  int spForAll = spForEachInst + spForFuncParams + spForRa;
+  spForAll = (spForAll + 15)/16*16;
+  mapFuncToSp[func] = spForAll;
+  mapFuncToRa[func] = spForRa;
+  int specialSpForEachInst = 0;
+  for (int i = 0; i < func->bbs.len; i++)
+  {
+      auto ptr = func->bbs.buffer[i];
+      koopa_raw_basic_block_t funcbb = reinterpret_cast<koopa_raw_basic_block_t>(ptr);
+
+      for (int j = 0; j < funcbb->insts.len; j++)
+      {
+        auto ptr = funcbb->insts.buffer[j];
+        koopa_raw_value_t bbInst = reinterpret_cast<koopa_raw_value_t>(ptr);
+        if (bbInst->ty->tag != KOOPA_RTT_UNIT)
+        {
+          stackForInsts[bbInst] = spForFuncParams + specialSpForEachInst;
+          specialSpForEachInst += 4;
+        }
+      }
+  }
+
+  // mapFuncToSp[func] = spForEachInst;
   koopa_raw_function_t prevFunc = curFunc;
   curFunc = func;
   myPrologue(curFunc);
 
   // 访问所有基本块
   Visit(func->bbs);
+  curFunc = prevFunc;
 }
 
 // 访问基本块
@@ -199,7 +234,10 @@ void Visit(const koopa_raw_basic_block_t &bb) {
   // ...
   // 访问所有指令
   string blockname = bb->name;
-  str1 += blockname.erase(0,1) + ":\n";
+  blockname.erase(0,1);
+
+  if (blockname != "entry")
+    str1 += blockname + ":\n";
   Visit(bb->insts);
 }
 
@@ -222,7 +260,7 @@ void Visit(const koopa_raw_value_t &value) {
     case KOOPA_RVT_BINARY:
       cout<<"KOOPA_RVT_BINARY"<<endl;
       Visit(kind.data.binary);
-      writeTo(value);
+      writeTo(value, "t0");
       break;
     case KOOPA_RVT_STORE:
       // 访问 integer 指令
@@ -231,7 +269,7 @@ void Visit(const koopa_raw_value_t &value) {
       break;
     case KOOPA_RVT_LOAD:
       Visit(kind.data.load);
-      writeTo(value);
+      writeTo(value, "t0");
       break;
     case KOOPA_RVT_ALLOC:
       cout<<"KOOPA_RVT_ALLOC"<<endl;
@@ -244,6 +282,20 @@ void Visit(const koopa_raw_value_t &value) {
       cout<<"KOOPA_RVT_JUMP"<<endl;
       Visit(kind.data.jump);
       break;
+    case KOOPA_RVT_CALL:
+      Visit(kind.data.call);
+      writeTo(value, "a0");
+      break;
+    case KOOPA_RVT_FUNC_ARG_REF:
+      Visit(kind.data.func_arg_ref);
+      break;
+    case KOOPA_RVT_GLOBAL_ALLOC:
+      myPrintGlobalVar(value);
+      Visit(kind.data.global_alloc);
+      break;
+    case KOOPA_RVT_ZERO_INIT:
+      str1 += " .zero 4\n";
+      break;
     default:
       // 其他类型暂时遇不到
       assert(false);
@@ -255,7 +307,8 @@ void Visit(const koopa_raw_return_t &ret) {
     cout << "******** visit return ********" << endl;
   # endif
 
-  if(stackForInsts.find(ret.value)!= stackForInsts.end() ){
+  if (ret.value == NULL)  {}
+  else if(stackForInsts.find(ret.value)!= stackForInsts.end() ){
     str1 += " lw a0, ";
     str1 += to_string(stackForInsts[ret.value]);
     str1 += "(sp)\n";
@@ -267,6 +320,43 @@ void Visit(const koopa_raw_return_t &ret) {
   
   myEpilogue(curFunc);
   str1 += " ret\n";
+}
+
+void Visit(const koopa_raw_call_t &call) 
+{
+  for (int i = 0; i < call.args.len; i++)
+  {
+    string destReg = "";
+    if (i < 8)
+    {
+      destReg = "a"+to_string(i);
+      readFrom(reinterpret_cast<koopa_raw_value_t>(call.args.buffer[i]), destReg);
+    }
+    else
+    {
+      string destMem = to_string((i-8)*4)+"(sp)";
+      readFrom(reinterpret_cast<koopa_raw_value_t>(call.args.buffer[i]), "t0");
+      str1 += "sw t0, "+destMem+"\n";
+    }
+  }
+  string callFuncName = call.callee->name;
+  callFuncName.erase(0,1);
+  str1 += " call " +callFuncName+"\n";
+}
+
+void Visit(const koopa_raw_func_arg_ref_t &funcArgRef) 
+{
+}
+
+void Visit(const koopa_raw_global_alloc_t &myGlobalAlloc) 
+{
+  if (myGlobalAlloc.init->kind.tag == KOOPA_RVT_INTEGER)
+    str1 += " .word "+to_string(myGlobalAlloc.init->kind.data.integer.value)+"\n";
+  else if (myGlobalAlloc.init->kind.tag == KOOPA_RVT_ZERO_INIT)
+    Visit(myGlobalAlloc.init);
+  else
+    assert(false);
+
 }
 
 void Visit(const koopa_raw_integer_t &integer) {
@@ -347,8 +437,24 @@ void Visit(const koopa_raw_binary_t &binary) {
 
 
 void Visit(const koopa_raw_store_t &rawStore) {
-  readFrom(rawStore.value, "t0");
-  writeTo(rawStore.dest);
+  if(rawStore.value->kind.tag == KOOPA_RVT_FUNC_ARG_REF)
+  {
+    int myIndex = rawStore.value->kind.data.func_arg_ref.index;
+    if(myIndex < 8)
+      writeTo(rawStore.dest, "a"+to_string(rawStore.value->kind.data.func_arg_ref.index));
+    else
+    {
+      int spNumForCalleeArgs = mapFuncToSp[curFunc] + (myIndex-8)*4;
+      str1 += " lw t0, "+to_string(spNumForCalleeArgs)+"(sp)\n";
+      writeTo(rawStore.dest, "t0");
+    }
+     
+  }
+  else
+  {
+    readFrom(rawStore.value, "t0");
+    writeTo(rawStore.dest, "t0");
+  }
 }
 
 void Visit(const koopa_raw_load_t &load) {

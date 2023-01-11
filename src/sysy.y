@@ -643,6 +643,9 @@ ConstDef
     ast->constval = $3->val;
     $$ = ast;
   }
+  | IDENT '[' ConstExp ']' '=' ConstInitVal {
+
+  }
   ;
 
 
