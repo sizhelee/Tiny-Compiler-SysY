@@ -1068,7 +1068,7 @@ class LAndExp : public BaseAST {
     {
         if (son.size() == 1)
             return son[0]->dump2str(str0);
-        std::string tmp1, tmp2, tmp3;
+        std::string tmp1, tmp2, tmp3, lasttmp;
 
         for(int i = 1; i < son.size(); i += 2)
         {   
@@ -1080,14 +1080,9 @@ class LAndExp : public BaseAST {
             else
             {
                 tmp3 = son[i + 1]->dump2str(str0);
-                tmp2 = son[i - 1]->dump2str(str0);
+                // tmp2 = son[i - 1]->dump2str(str0);
+                tmp2 = lasttmp;
             }
-
-            // if (son[i-1]->val == 0)
-            //     return "0";
-            // else if (son[i+1]->val == 0)
-            //     return "0";
-            // return "1";
 
             str0 += " %";
             str0 += std::to_string(expNumCnt++);
@@ -1102,6 +1097,7 @@ class LAndExp : public BaseAST {
             str0 += "\n";
 
             tmp1 = "%" + std::to_string(expNumCnt++);
+            lasttmp = tmp1;
 
             str0 += " ";
             str0 += tmp1;
@@ -1132,7 +1128,7 @@ class LOrExp : public BaseAST {
     {
         if (son.size() == 1)
             return son[0]->dump2str(str0);
-        std::string tmp1, tmp2, tmp3;
+        std::string tmp1, tmp2, tmp3, lasttmp;
 
         for(int i = 1; i < son.size(); i += 2)
         {   
@@ -1144,14 +1140,9 @@ class LOrExp : public BaseAST {
             else
             {
                 tmp3 = son[i + 1]->dump2str(str0);
-                tmp2 = son[i - 1]->dump2str(str0);
+                // tmp2 = son[i - 1]->dump2str(str0);
+                tmp2 = lasttmp;
             }
-
-            // if (son[i-1]->val)
-            //     return "1";
-            // else if (son[i+1]->val)
-            //     return "1";
-            // return "0";
 
             str0 += " %";
             str0 += std::to_string(expNumCnt++);
@@ -1166,6 +1157,7 @@ class LOrExp : public BaseAST {
             str0 += "\n";
 
             tmp1 = "%" + std::to_string(expNumCnt++);
+            lasttmp = tmp1;
 
             str0 += " ";
             str0 += tmp1;
