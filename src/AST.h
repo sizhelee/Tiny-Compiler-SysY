@@ -65,14 +65,14 @@ class CompUnitAST : public BaseAST {
         current_table = &symbol_table;
         str0 = "";
 
-        str0 += "decl @getint(): i32\n";
-        str0 += "decl @getch(): i32\n";
-        str0 += "decl @getarray(*i32): i32\n";
-        str0 += "decl @putint(i32)\n";
-        str0 += "decl @putch(i32)\n";
-        str0 += "decl @putarray(i32, *i32)\n";
-        str0 += "decl @starttime()\n";
-        str0 += "decl @stoptime()\n";
+        // str0 += "decl @getint(): i32\n";
+        // str0 += "decl @getch(): i32\n";
+        // str0 += "decl @getarray(*i32): i32\n";
+        // str0 += "decl @putint(i32)\n";
+        // str0 += "decl @putch(i32)\n";
+        // str0 += "decl @putarray(i32, *i32)\n";
+        // str0 += "decl @starttime()\n";
+        // str0 += "decl @stoptime()\n";
 
         func_table["getint"] = "int";
         func_table["getch"] = "int";
