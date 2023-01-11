@@ -65,14 +65,14 @@ class CompUnitAST : public BaseAST {
         current_table = &symbol_table;
         str0 = "";
 
-        // str0 += "decl @getint(): i32\n";
-        // str0 += "decl @getch(): i32\n";
-        // str0 += "decl @getarray(*i32): i32\n";
-        // str0 += "decl @putint(i32)\n";
-        // str0 += "decl @putch(i32)\n";
-        // str0 += "decl @putarray(i32, *i32)\n";
-        // str0 += "decl @starttime()\n";
-        // str0 += "decl @stoptime()\n";
+        str0 += "decl @getint(): i32\n";
+        str0 += "decl @getch(): i32\n";
+        str0 += "decl @getarray(*i32): i32\n";
+        str0 += "decl @putint(i32)\n";
+        str0 += "decl @putch(i32)\n";
+        str0 += "decl @putarray(i32, *i32)\n";
+        str0 += "decl @starttime()\n";
+        str0 += "decl @stoptime()\n";
 
         func_table["getint"] = "int";
         func_table["getch"] = "int";
@@ -117,12 +117,12 @@ class FuncDefAST : public BaseAST {
             son[1]->Dump(str0);
         str0 += ")";
         // std::cout << "fun @" << ident << "(): ";
-        func_type->Dump(str0);
+        // func_type->Dump(str0);
         // std::cout << "*********** param type: " << func_type << " ************\n";
-        // if(func_type == "int")
-        //     str0 += "i32";
-        // else if (func_type == "void")
-        //     str0 += "";
+        if(func_type->dump2str(str0) == "int")
+            str0 += ": i32";
+        else if (func_type->dump2str(str0) == "void")
+            str0 += "";
 
         str0 += " { \n";
         std::cout << " { "<<std::endl;
@@ -690,7 +690,8 @@ class UnaryExp : public BaseAST {
                     }
                     if (flag)
                         break;
-                    search_table = total_table[search_table];
+                    if (searchdep > 1)
+                        search_table = total_table[search_table];
                     searchdep -= 1;
                 }
 
@@ -1189,7 +1190,10 @@ class LOrExp : public BaseAST {
 class Decl : public BaseAST {
     public:
     Decl()  { type = _Decl;   }
-    void Dump(std::string& str0) const override {}
+    void Dump(std::string& str0) const override 
+    {
+        son[0]->Dump(str0);
+    }
 
     std::string dump2str(std::string &str0) override 
     {
@@ -1238,7 +1242,7 @@ class BType: public BaseAST {
     }
     std::string dump2str(std::string &str0) override 
     {
-        return "";
+        return ident;
     }
 };
 
@@ -1354,7 +1358,11 @@ class VarDecl: public BaseAST {
 class myVarDef: public BaseAST {
     public:
     myVarDef()  { type = _myVarDef; }
-    void Dump(std::string& str0) const override {}
+    void Dump(std::string& str0) const override 
+    {
+        for (auto iter = son.begin(); iter != son.end(); iter++)
+            (*iter)->Dump(str0);
+    }
 
     std::string dump2str(std::string &str0) override
     {
@@ -1373,8 +1381,8 @@ class VarDef: public BaseAST {
     VarDef()    { type = _VarDef;   }
     void Dump(std::string& str0) const override 
     {
-        std::string tmp = "@" + ident + "_" + std::to_string(allsymTabCnt);
-        str0 += "global ";
+        std::string tmp = ident + "_" + std::to_string(allsymTabCnt);
+        str0 += "global @";
         str0 += tmp;
         str0 += " = alloc i32, ";
 

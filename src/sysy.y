@@ -43,7 +43,7 @@ using namespace std;
 %token <ast_val> LE GE EQ NE LT GT AND OR
 
 // 非终结符的类型定义
-%type <ast_val> FuncDef FuncType Block Stmt Number CompUnit
+%type <ast_val> FuncDef Block Stmt Number CompUnit
 %type <ast_val> Exp PrimaryExp UnaryExp UnaryOp AddExp MulExp
 %type <ast_val> RelExp EqExp LAndExp LOrExp
 %type <ast_val> Decl ConstDecl BType ConstDef ConstInitVal BlockItem
@@ -106,7 +106,7 @@ CompUnit
 // 虽然此处你看不出用 unique_ptr 和手动 delete 的区别, 但当我们定义了 AST 之后
 // 这种写法会省下很多内存管理的负担
 FuncDef
-  : FuncType IDENT '(' ')' Block {
+  : BType IDENT '(' ')' Block {
     std::cout << "FuncDef -> FuncType IDENT ( ) Block" << std::endl;
     auto ast = new FuncDefAST();
     ast->func_type = unique_ptr<BaseAST>($1);
@@ -116,7 +116,7 @@ FuncDef
     ast->son.push_back($5);
     $$ = ast;
   }
-  | FuncType IDENT '(' FuncFParams ')' Block {
+  | BType IDENT '(' FuncFParams ')' Block {
     std::cout << "FuncDef -> FuncType IDENT ( FuncFParams ) Block" << std::endl;
     auto ast = new FuncDefAST();
     ast->func_type = unique_ptr<BaseAST>($1);
@@ -154,7 +154,7 @@ FuncFParam
     $$ = ast;
   };
 // 同上, 不再解释
-FuncType
+/* FuncType
   : INT {
     std::cout << "FuncType -> INT" << std::endl;
     auto ast = new FuncTypeAST();
@@ -169,7 +169,7 @@ FuncType
     ast->func_type = str;
     $$ = ast;
   }
-  ;
+  ; */
 
 Block
   : '{' myBlockItem '}' {
