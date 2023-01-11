@@ -49,7 +49,9 @@ void Visit(const koopa_raw_return_t &ret);
 void Visit(const koopa_raw_integer_t &integer);
 void Visit(const koopa_raw_binary_t &binary);
 void Visit(const koopa_raw_store_t &rawStore);
-void Visit(const koopa_raw_load_t &rawLoad);
+void Visit(const koopa_raw_load_t &load);
+void Visit(const koopa_raw_jump_t &jump);
+void Visit(const koopa_raw_branch_t &branch);
 
 int retValue(const koopa_raw_value_t &rawValue);
 int retValue(const koopa_raw_integer_t &rawInterger);
@@ -196,6 +198,8 @@ void Visit(const koopa_raw_basic_block_t &bb) {
   // 执行一些其他的必要操作
   // ...
   // 访问所有指令
+  string blockname = bb->name;
+  str1 += blockname.erase(0,1) + ":\n";
   Visit(bb->insts);
 }
 
@@ -232,6 +236,14 @@ void Visit(const koopa_raw_value_t &value) {
     case KOOPA_RVT_ALLOC:
       cout<<"KOOPA_RVT_ALLOC"<<endl;
       break;
+    case KOOPA_RVT_BRANCH:
+      cout<<"KOOPA_RVT_BRANCH"<<endl;
+      Visit(kind.data.branch);
+      break;
+    case KOOPA_RVT_JUMP:
+      cout<<"KOOPA_RVT_JUMP"<<endl;
+      Visit(kind.data.jump);
+      break;
     default:
       // 其他类型暂时遇不到
       assert(false);
@@ -242,16 +254,6 @@ void Visit(const koopa_raw_return_t &ret) {
   # if DEBUGMODE
     cout << "******** visit return ********" << endl;
   # endif
-
-  // cout<<"li a0, ";
-  // cout<<ret.value->kind.data.integer.value<<endl;
-  // cout<<"ret"<<endl;
-
-  // fprintf(yyout,"li a0, ");
-  // fprintf(yyout, "%d",ret.value->kind.data.integer.value);
-  // fprintf(yyout, "\n");
-  // fprintf(yyout, "ret");
-  // fprintf(yyout, "\n");
 
   if(stackForInsts.find(ret.value)!= stackForInsts.end() ){
     str1 += " lw a0, ";
@@ -351,6 +353,24 @@ void Visit(const koopa_raw_store_t &rawStore) {
 
 void Visit(const koopa_raw_load_t &load) {
   readFrom(load.src, "t0");
+}
+
+
+void Visit(const koopa_raw_branch_t &branch) {
+  readFrom(branch.cond, "t0");
+  string trueLabel = branch.true_bb->name;
+  trueLabel.erase(0,1);
+  str1 += " bnez t0, "+trueLabel+"\n";
+  string falseLabel = branch.false_bb->name; 
+  falseLabel.erase(0,1);
+  str1 += " j "+falseLabel+"\n";
+ 
+}
+
+void Visit(const koopa_raw_jump_t &jump) {
+ string targetLabel = jump.target->name;
+ targetLabel.erase(0,1);
+ str1 += " j "+targetLabel+"\n";
 }
 
 
