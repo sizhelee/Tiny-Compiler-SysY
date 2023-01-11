@@ -24,7 +24,7 @@ extern FILE *yyin, *yyout;
 extern int yyparse(unique_ptr<BaseAST> &ast);
 int debugmode = 1;
 int expNumCnt = 0, symTabCnt = 0, ifNumCnt = 0, allsymTabCnt = 0, whileNumCnt = 0;
-int brctNumCnt = 0;
+int brctNumCnt = 0, expIfCnt = 0;
 string now_while_end = "", now_while_entry = "";
 
 map<string, pair<int, int>> symbol_table;

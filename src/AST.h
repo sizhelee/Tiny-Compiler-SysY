@@ -17,7 +17,7 @@ enum TYPE{
   _InitVal, _FuncFParamsAST, _FuncFParamAST, _FuncRParamsAST, 
 
 };
-extern int expNumCnt, symTabCnt, ifNumCnt, whileNumCnt, allsymTabCnt, brctNumCnt;
+extern int expNumCnt, symTabCnt, ifNumCnt, whileNumCnt, allsymTabCnt, brctNumCnt, expIfCnt;
 extern std::map<std::string, std::pair<int, int>> symbol_table;
 extern std::map<std::string, std::pair<int, int>> *current_table;
 extern std::map<std::map<std::string, std::pair<int, int>>*, std::map<std::string, std::pair<int, int>>*> total_table;
@@ -1072,17 +1072,18 @@ class LAndExp : public BaseAST {
 
         for(int i = 1; i < son.size(); i += 2)
         {   
+            int expIfCnt_ori = expIfCnt;
+            expIfCnt++;
+            std::string tmpreg = "@tttmp_" + std::to_string(expIfCnt_ori);
+            str0 += " ";
+            str0 += tmpreg;
+            str0 += " = alloc i32\n";
+            str0 += " store 0, " + tmpreg + "\n";
+
             if (i == 1)
-            {
                 tmp2 = son[0]->dump2str(str0);
-                tmp3 = son[i + 1]->dump2str(str0);
-            }
             else
-            {
-                tmp3 = son[i + 1]->dump2str(str0);
-                // tmp2 = son[i - 1]->dump2str(str0);
                 tmp2 = lasttmp;
-            }
 
             str0 += " %";
             str0 += std::to_string(expNumCnt++);
@@ -1090,29 +1091,42 @@ class LAndExp : public BaseAST {
             str0 += tmp2;
             str0 += "\n";
 
+            str0 += " br %";
+            str0 += std::to_string(expNumCnt-1);
+            str0 += ", \%expthen_";
+            str0 += std::to_string(expIfCnt_ori);
+            str0 += ", \%expend_";
+            str0 += std::to_string(expIfCnt_ori);
+            str0 += "\n";
+
+            str0 += "\%expthen_";
+            str0 += std::to_string(expIfCnt_ori);
+            str0 += ":\n";
+            tmp3 = son[i + 1]->dump2str(str0);
+
             str0 += " %";
             str0 += std::to_string(expNumCnt++);
             str0 += " = ne 0, ";
             str0 += tmp3;
             str0 += "\n";
 
+            str0 += " store %";
+            str0 += std::to_string(expNumCnt-1);
+            str0 += ", " + tmpreg + "\n";
+            str0 += " jump \%expend_";
+            str0 += std::to_string(expIfCnt_ori);
+            str0 += "\n";
+
+            str0 += "\%expend_";
+            str0 += std::to_string(expIfCnt_ori);
+            str0 += ":\n";
+
             tmp1 = "%" + std::to_string(expNumCnt++);
             lasttmp = tmp1;
 
             str0 += " ";
             str0 += tmp1;
-            str0 += " = ";
-
-            if (son[i]->type == _AND)
-                str0 += "and";
-                
-            str0 += " %";
-            str0 += std::to_string(expNumCnt-3);
-            str0 += ", %";
-            str0 += std::to_string(expNumCnt-2);
-            str0 += "\n";
-
-            // std::cout << str0 << std::endl;
+            str0 += " = load " + tmpreg + "\n";
         }
         return tmp1;
     }
@@ -1132,23 +1146,37 @@ class LOrExp : public BaseAST {
 
         for(int i = 1; i < son.size(); i += 2)
         {   
+            int expIfCnt_ori = expIfCnt;
+            expIfCnt++;
+            std::string tmpreg = "@tttmp_" + std::to_string(expIfCnt_ori);
+            str0 += " ";
+            str0 += tmpreg;
+            str0 += " = alloc i32\n";
+            str0 += " store 1, " + tmpreg + "\n";
+
             if (i == 1)
-            {
                 tmp2 = son[0]->dump2str(str0);
-                tmp3 = son[i + 1]->dump2str(str0);
-            }
             else
-            {
-                tmp3 = son[i + 1]->dump2str(str0);
-                // tmp2 = son[i - 1]->dump2str(str0);
                 tmp2 = lasttmp;
-            }
 
             str0 += " %";
             str0 += std::to_string(expNumCnt++);
-            str0 += " = ne 0, ";
+            str0 += " = eq 0, ";
             str0 += tmp2;
             str0 += "\n";
+
+            str0 += " br %";
+            str0 += std::to_string(expNumCnt-1);
+            str0 += ", \%expthen_";
+            str0 += std::to_string(expIfCnt_ori);
+            str0 += ", \%expend_";
+            str0 += std::to_string(expIfCnt_ori);
+            str0 += "\n";
+
+            str0 += "\%expthen_";
+            str0 += std::to_string(expIfCnt_ori);
+            str0 += ":\n";
+            tmp3 = son[i + 1]->dump2str(str0);
 
             str0 += " %";
             str0 += std::to_string(expNumCnt++);
@@ -1156,23 +1184,23 @@ class LOrExp : public BaseAST {
             str0 += tmp3;
             str0 += "\n";
 
+            str0 += " store %";
+            str0 += std::to_string(expNumCnt-1);
+            str0 += ", " + tmpreg + "\n";
+            str0 += " jump \%expend_";
+            str0 += std::to_string(expIfCnt_ori);
+            str0 += "\n";
+
+            str0 += "\%expend_";
+            str0 += std::to_string(expIfCnt_ori);
+            str0 += ":\n";
+
             tmp1 = "%" + std::to_string(expNumCnt++);
             lasttmp = tmp1;
 
             str0 += " ";
             str0 += tmp1;
-            str0 += " = ";
-
-            if (son[i]->type == _OR)
-                str0 += "or";
-                
-            str0 += " %";
-            str0 += std::to_string(expNumCnt-3);
-            str0 += ", %";
-            str0 += std::to_string(expNumCnt-2);
-            str0 += "\n";
-
-            // std::cout << str0 << std::endl;
+            str0 += " = load " + tmpreg + "\n";
         }
         return tmp1;
     }
