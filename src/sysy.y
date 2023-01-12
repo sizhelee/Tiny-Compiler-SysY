@@ -49,7 +49,7 @@ using namespace std;
 %type <ast_val> Decl ConstDecl BType ConstDef ConstInitVal BlockItem
 %type <ast_val> LVal ConstExp VarDecl VarDef InitVal FuncFParams
 %type <ast_val> FuncFParam FuncRParams
-%type <ast_val> myConstDef myBlockItem myVarDef
+%type <ast_val> myConstDef myBlockItem myVarDef myConstInitVal myInitVal
 /* %type <int_val> Number */
 
 %%
@@ -618,7 +618,15 @@ ConstDef
     $$ = ast;
   }
   | IDENT '[' ConstExp ']' '=' ConstInitVal {
-
+    symbol_table[*$1] = make_pair($3->val, 1);
+    auto ast = new ConstDef();
+    ast->isarray = true;
+    ast->ident = *unique_ptr<string>($1);
+    ast->son.push_back($3);
+    ast->son.push_back($6);
+    symbol_table[ast->ident] = make_pair(ast->val, 1);
+    ast->val = $3->val;
+    $$ = ast;
   }
   ;
 
@@ -631,6 +639,31 @@ ConstInitVal
     ast->son.push_back($1);
     $$ = ast;
   }
+  | '{' '}' {
+    auto ast = new ConstInitVal();
+    ast->isarray = true;
+    $$ = ast;
+  }
+  | '{' myConstInitVal '}' {
+    auto ast = new ConstInitVal();
+    ast->isarray = true;
+    ast->son.push_back($2);
+    $$ = ast;
+  }
+  ;
+
+
+myConstInitVal
+  : myConstInitVal ',' ConstExp {
+    $1->son.push_back($3);
+    $$ = $1;
+  }
+  | ConstExp {
+    auto ast = new myConstInitVal();
+    ast->son.push_back($1);
+    ast->val = $1->val;
+    $$ = ast;
+  }
   ;
 
 
@@ -641,6 +674,14 @@ LVal
     ast->ident = *unique_ptr<string>($1);
     ast->val = symbol_table[ast->ident].first;
     cout << "******** LVal(" << ast->ident << "): " << ast->val << " ********" << endl;
+    $$ = ast;
+  }
+  | IDENT '[' Exp ']' {
+    auto ast = new LVal();
+    ast->ident = *unique_ptr<string>($1);
+    ast->isarray = true;
+    ast->val = $3->val;
+    ast->son.push_back($3);
     $$ = ast;
   }
   ;
@@ -700,6 +741,25 @@ VarDef
     symbol_table[ast->ident] = make_pair(ast->val, 0);
     $$ = ast;
   }
+  | IDENT '[' ConstExp ']' {
+    auto ast = new VarDef();
+    ast->ident = *unique_ptr<string>($1);
+    ast->val = $3->val;
+    ast->isarray = true;
+    ast->son.push_back($3);
+    symbol_table[ast->ident] = make_pair(ast->val, 1);
+    $$ = ast;
+  }
+  | IDENT '[' ConstExp ']' '=' InitVal {
+    auto ast = new VarDef();
+    ast->ident = *unique_ptr<string>($1);
+    ast->val = $3->val;
+    ast->isarray = true;
+    ast->son.push_back($3);
+    ast->son.push_back($6);
+    symbol_table[ast->ident] = make_pair(ast->val, 1);
+    $$ = ast;
+  } 
   ;
 
 
@@ -707,6 +767,31 @@ InitVal
   : Exp {
     std::cout << "InitVal -> Exp" << std::endl;
     auto ast = new InitVal();
+    ast->son.push_back($1);
+    ast->val = $1->val;
+    $$ = ast;
+  }
+  | '{' myInitVal '}' {
+    auto ast = new InitVal();
+    ast->isarray = true;
+    ast->son.push_back($2);
+    $$ = ast;
+  }
+  | '{' '}' {
+    auto ast = new InitVal();
+    ast->isarray = true;
+    $$ = ast;
+  }
+  ;
+
+
+myInitVal
+  : myInitVal ',' Exp {
+    $1->son.push_back($3);
+    $$ = $1;
+  }
+  | Exp {
+    auto ast = new myInitVal();
     ast->son.push_back($1);
     ast->val = $1->val;
     $$ = ast;

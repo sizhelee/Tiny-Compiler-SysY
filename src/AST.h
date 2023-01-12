@@ -21,7 +21,7 @@ enum TYPE{
     _LE, _GE, _AND, _OR, _EQ, _NE, _Decl, _ConstDecl, _BType, _ConstDef, 
     _myConstDef, _ConstInitVal, _Block, _BlockItem, _myBlockItem, _LVal, 
     _ConstExp, _VarDecl, _myVarDef, _VarDef, _InitVal, _FuncFParamsAST, 
-    _FuncFParamAST, _FuncRParamsAST, 
+    _FuncFParamAST, _FuncRParamsAST, _myInitVal, _myConstInitVal, 
 
 };
 extern int expNumCnt, symTabCnt, ifNumCnt, whileNumCnt, allsymTabCnt, brctNumCnt, expIfCnt;
@@ -42,6 +42,7 @@ class BaseAST {
     int val;
     char op;
     bool isident = false;
+    bool isarray = false;
     bool isint = false, ret = false, isif = false, iswhile = false, isbreak = false, iscontinue = false;
     std::string ident;
 
@@ -647,69 +648,112 @@ class UnaryExp : public BaseAST {
             else if (ptr->son[0]->type == _LVal)
             {
                 tmp1 = ptr->son[0]->dump2str(str0);
-                // std::cout << "#### DEBUG #### tmp1: " << tmp1 << std::endl;
-                std::string identtmp = tmp1;
-                std::string identtmp_num;
-                int searchdep = symTabCnt;
-                std::map<std::string, std::pair<int, int>> *search_table = current_table;
-                
-                // std::cout << "###### DEBUG SYM TABLE ######\n";
-                // std::cout << "all tab num: " << allsymTabCnt << " ";
-                // std::cout << "exist tab num: " << symTabCnt << std::endl;
-                // for (auto iter = current_table->begin(); iter != current_table->end(); iter++)
-                // {
-                //     std::cout << (*iter).first << " ";
-                //     std::cout << (*iter).second.first << std::endl;
-                // }
 
-                while (searchdep > 0)
+                if (ptr->son[0]->isarray)
                 {
-                    int flag = 0;
-                    for (int ident_idx = allsymTabCnt; ident_idx >= searchdep; ident_idx--)
+                    std::string identtmp = tmp1;
+                    std::string identtmp_num;
+                    int searchdep = symTabCnt;
+                    std::map<std::string, std::pair<int, int>> *search_table = current_table;    
+
+                    while (searchdep > 0)
                     {
-                        identtmp_num = identtmp + '_' + std::to_string(ident_idx);
-                        if ((*search_table).find(identtmp_num) != (*search_table).end())
-                            flag = 1;
+                        int flag = 0;
+                        for (int ident_idx = allsymTabCnt; ident_idx >= searchdep; ident_idx--)
+                        {
+                            identtmp_num = identtmp + '_' + std::to_string(ident_idx);
+                            if ((*search_table).find(identtmp_num) != (*search_table).end())
+                                flag = 1;
+                            if (flag)
+                                break;
+                        }
                         if (flag)
                             break;
+                        if (searchdep > 1)
+                            search_table = total_table[search_table];
+                        searchdep -= 1;
                     }
-                    if (flag)
-                        break;
-                    if (searchdep > 1)
-                        search_table = total_table[search_table];
-                    searchdep -= 1;
-                }
 
-                // std::cout << "###### DEBUG SYM TABLE ######\n";
-                // std::cout << "all tab num: " << allsymTabCnt << " ";
-                // std::cout << "exist tab num: " << symTabCnt << std::endl;
-                // std::cout << "search depth: " << searchdep << " ";
-                // std::cout << "search for: " << identtmp_num << std::endl;
-                // for (auto iter = search_table->begin(); iter != search_table->end(); iter++)
-                // {
-                //     std::cout << (*iter).first << " ";
-                //     std::cout << (*iter).second.first << std::endl;
-                // }
-
-                if (searchdep == 0) // 在全局函数表中
-                {
-                    auto sym_label_val = symbol_table[tmp1];
-                    return std::to_string(sym_label_val.first);
-                }
-                
-                auto sym_label_val = (*search_table)[identtmp_num];
-                if (sym_label_val.second == 0) // 非const
-                {
-                    tmp2 = "%" + std::to_string(expNumCnt++);
-                    str0 += " ";
-                    str0 += tmp2;
-                    str0 += " = load @";
+                    str0 += " \%";
+                    str0 += std::to_string(expNumCnt++);
+                    str0 += " = getelemptr @";
                     str0 += identtmp_num;
+                    str0 += ", ";
+                    str0 += std::to_string(val);
+                    str0 += "\n \%";
+                    str0 += std::to_string(expNumCnt++);
+                    str0 += " = load \%";
+                    str0 += std::to_string(expNumCnt-2);
                     str0 += "\n";
-                    std::cout << str0;
+                    
+                    return "\%" + std::to_string(expNumCnt-1);
                 }
-                else tmp2 = std::to_string(sym_label_val.first);
-                return tmp2;
+
+                else
+                {
+                    std::string identtmp = tmp1;
+                    std::string identtmp_num;
+                    int searchdep = symTabCnt;
+                    std::map<std::string, std::pair<int, int>> *search_table = current_table;
+                    
+                    // std::cout << "###### DEBUG SYM TABLE ######\n";
+                    // std::cout << "all tab num: " << allsymTabCnt << " ";
+                    // std::cout << "exist tab num: " << symTabCnt << std::endl;
+                    // for (auto iter = current_table->begin(); iter != current_table->end(); iter++)
+                    // {
+                    //     std::cout << (*iter).first << " ";
+                    //     std::cout << (*iter).second.first << std::endl;
+                    // }
+
+                    while (searchdep > 0)
+                    {
+                        int flag = 0;
+                        for (int ident_idx = allsymTabCnt; ident_idx >= searchdep; ident_idx--)
+                        {
+                            identtmp_num = identtmp + '_' + std::to_string(ident_idx);
+                            if ((*search_table).find(identtmp_num) != (*search_table).end())
+                                flag = 1;
+                            if (flag)
+                                break;
+                        }
+                        if (flag)
+                            break;
+                        if (searchdep > 1)
+                            search_table = total_table[search_table];
+                        searchdep -= 1;
+                    }
+
+                    // std::cout << "###### DEBUG SYM TABLE ######\n";
+                    // std::cout << "all tab num: " << allsymTabCnt << " ";
+                    // std::cout << "exist tab num: " << symTabCnt << std::endl;
+                    // std::cout << "search depth: " << searchdep << " ";
+                    // std::cout << "search for: " << identtmp_num << std::endl;
+                    // for (auto iter = search_table->begin(); iter != search_table->end(); iter++)
+                    // {
+                    //     std::cout << (*iter).first << " ";
+                    //     std::cout << (*iter).second.first << std::endl;
+                    // }
+
+                    if (searchdep == 0) // 在全局函数表中
+                    {
+                        auto sym_label_val = symbol_table[tmp1];
+                        return std::to_string(sym_label_val.first);
+                    }
+                    
+                    auto sym_label_val = (*search_table)[identtmp_num];
+                    if (sym_label_val.second == 0) // 非const
+                    {
+                        tmp2 = "%" + std::to_string(expNumCnt++);
+                        str0 += " ";
+                        str0 += tmp2;
+                        str0 += " = load @";
+                        str0 += identtmp_num;
+                        str0 += "\n";
+                        std::cout << str0;
+                    }
+                    else tmp2 = std::to_string(sym_label_val.first);
+                    return tmp2;
+                }
             }
         }
 
@@ -1179,8 +1223,7 @@ class ConstDecl: public BaseAST {
     ConstDecl() { type = _ConstDecl;    }
     void Dump(std::string& str0) const override 
     {
-        // for(auto iter = son.begin()+1; iter != son.end(); iter++)
-        //     (*iter)->Dump(str0);
+        son[1]->Dump(str0);
     }
 
     std::string dump2str(std::string &str0) override 
@@ -1195,7 +1238,13 @@ class ConstDecl: public BaseAST {
 class myConstDef : public BaseAST {
     public:
     myConstDef()    { type = _myConstDef;   }
-    void Dump(std::string& str0) const override {}
+    void Dump(std::string& str0) const override 
+    {
+        std::cout << "BBBBBBBBBBBB\n";
+        std::cout << son[0]->type << std::endl;
+        for (auto iter = son.begin(); iter != son.end(); iter++)
+            (*iter)->Dump(str0);
+    }
 
     std::string dump2str(std::string &str0) override 
     {
@@ -1227,13 +1276,97 @@ class ConstDef: public BaseAST {
     std::string ident;
     int constval;
     ConstDef()  { type = _ConstDef; }
-    void Dump(std::string& str0) const override {}
+    void Dump(std::string& str0) const override 
+    {
+        if (isarray)
+        {
+            std::string tmp = ident + "_" + std::to_string(allsymTabCnt);
+            (*current_table)[tmp] = std::make_pair(val, 1);
+            glob_table[tmp] = std::make_pair(val, 1);
+
+            str0 += "global @";
+            str0 += tmp;
+            str0 += " = alloc [i32, ";
+            str0 += std::to_string(val);
+            str0 += "], {";
+
+            if (son.size() == 1)
+            {
+                for (int i = 0; i < val; i++)
+                {
+                    if (i)
+                        str0 += ", ";
+                    str0 += "0";
+                }
+            }
+            else
+            {
+                int i = 0;
+                if (son[1]->son.size())
+                {
+                    for(; i < son[1]->son[0]->son.size(); i++)
+                    {
+                        if (i)
+                            str0 += ", ";
+                        str0 += std::to_string(son[1]->son[0]->son[i]->val);
+                    }
+                }
+                for(; i < val; i++)
+                {
+                    if (i)
+                        str0 += ", ";
+                    str0 += "0";
+                }
+            }
+            str0 += "}\n";
+        }
+    }
 
     std::string dump2str(std::string &str0) override
     {
-        std::cout << "ConstDef: " << ident << std::endl;
-        std::string identtmp = ident + '_' + std::to_string(allsymTabCnt);
-        (*current_table)[identtmp] = std::make_pair(constval, 1);
+        std::string identtmp_num = ident + '_' + std::to_string(allsymTabCnt);
+        
+        if (isarray)
+        {
+            (*current_table)[identtmp_num] = std::make_pair(val, 1);
+
+            str0 += " @";
+            str0 += identtmp_num;
+            str0 += " = alloc [i32, ";
+            str0 += std::to_string(val);
+            str0 += "]\n";
+
+            std::vector<int> arrayinitnum;
+            int i = 0;
+            if (son.size() > 1 && son[1]->son.size())
+                for(; i < son[1]->son[0]->son.size(); i++)
+                    arrayinitnum.push_back(son[1]->son[0]->son[i]->val);
+            for(; i < val; i++)
+                arrayinitnum.push_back(0);
+
+            for (i = 0; i < val; i++)
+            {
+                str0 += " \%";
+                str0 += std::to_string(expNumCnt);
+                str0 += " = getelemptr @";
+                str0 += identtmp_num;
+                str0 += ", ";
+                str0 += std::to_string(i);
+
+                str0 += "\n store ";
+                str0 += std::to_string(arrayinitnum[i]);
+                str0 += ", \%";
+                str0 += std::to_string(expNumCnt++);
+                str0 += "\n";
+            }
+        }
+
+        else
+        {
+            std::string identtmp = ident + '_' + std::to_string(allsymTabCnt);
+            std::cout << "ConstDef: " << ident << std::endl;
+            (*current_table)[identtmp] = std::make_pair(constval, 1);
+        }
         return "";
     }
 };
@@ -1247,6 +1380,13 @@ class ConstInitVal: public BaseAST {
     {
         return "";
     }
+};
+
+
+class myConstInitVal: public BaseAST {
+    public:
+    myConstInitVal()    { type = _myConstInitVal;   }
+    void Dump(std::string& str0) const override {}
 };
 
 
@@ -1317,24 +1457,70 @@ class VarDef: public BaseAST {
     VarDef()    { type = _VarDef;   }
     void Dump(std::string& str0) const override 
     {
-        std::string tmp = ident + "_" + std::to_string(allsymTabCnt);
-        str0 += "global @";
-        str0 += tmp;
-        str0 += " = alloc i32, ";
-
-        if (son.size() > 0)
+        if (isarray)
         {
-            std::string globalVarVal = son[0]->dump2str(str0);
-            str0 += globalVarVal;
-            str0 += "\n";
-            (*current_table)[tmp] = std::make_pair(son[0]->val, 0);
-            glob_table[tmp] = std::make_pair(son[0]->val, 0);
+            std::string tmp = ident + "_" + std::to_string(allsymTabCnt);
+            (*current_table)[tmp] = std::make_pair(val, 1);
+            glob_table[tmp] = std::make_pair(val, 1);
+
+            str0 += "global @";
+            str0 += tmp;
+            str0 += " = alloc [i32, ";
+            str0 += std::to_string(val);
+            str0 += "], {";
+
+            if (son.size() == 1)
+            {
+                for (int i = 0; i < val; i++)
+                {
+                    if (i)
+                        str0 += ", ";
+                    str0 += "0";
+                }
+            }
+            else
+            {
+                int i = 0;
+                if (son[1]->son.size())
+                {
+                    for(; i < son[1]->son[0]->son.size(); i++)
+                    {
+                        if (i)
+                            str0 += ", ";
+                        str0 += std::to_string(son[1]->son[0]->son[i]->val);
+                    }
+                }
+                for(; i < val; i++)
+                {
+                    if (i)
+                        str0 += ", ";
+                    str0 += "0";
+                }
+            }
+            str0 += "}\n";
         }
+
         else
         {
-            str0 += "zeroinit\n";
-            (*current_table)[tmp] = std::make_pair(0, 0);
-            glob_table[tmp] = std::make_pair(0, 0);
+            std::string tmp = ident + "_" + std::to_string(allsymTabCnt);
+            str0 += "global @";
+            str0 += tmp;
+            str0 += " = alloc i32, ";
+
+            if (son.size() > 0)
+            {
+                std::string globalVarVal = son[0]->dump2str(str0);
+                str0 += globalVarVal;
+                str0 += "\n";
+                (*current_table)[tmp] = std::make_pair(son[0]->val, 0);
+                glob_table[tmp] = std::make_pair(son[0]->val, 0);
+            }
+            else
+            {
+                str0 += "zeroinit\n";
+                (*current_table)[tmp] = std::make_pair(0, 0);
+                glob_table[tmp] = std::make_pair(0, 0);
+            }
         }
     }
 
@@ -1342,33 +1528,71 @@ class VarDef: public BaseAST {
     {
         std::string identtmp_num = ident + '_' + std::to_string(allsymTabCnt);
         
-        if (glob_table.find("@"+identtmp_num) == glob_table.end())
+        if (isarray)
         {
+            (*current_table)[identtmp_num] = std::make_pair(val, 1);
+
             str0 += " @";
             str0 += identtmp_num;
-            str0 += " = alloc i32\n";
+            str0 += " = alloc [i32, ";
+            str0 += std::to_string(val);
+            str0 += "]\n";
+
+            std::vector<int> arrayinitnum;
+            int i = 0;
+            if (son.size() > 1 && son[1]->son.size())
+                for(; i < son[1]->son[0]->son.size(); i++)
+                    arrayinitnum.push_back(son[1]->son[0]->son[i]->val);
+            for(; i < val; i++)
+                arrayinitnum.push_back(0);
+
+            for (i = 0; i < val; i++)
+            {
+                str0 += " \%";
+                str0 += std::to_string(expNumCnt);
+                str0 += " = getelemptr @";
+                str0 += identtmp_num;
+                str0 += ", ";
+                str0 += std::to_string(i);
+
+                str0 += "\n store ";
+                str0 += std::to_string(arrayinitnum[i]);
+                str0 += ", \%";
+                str0 += std::to_string(expNumCnt++);
+                str0 += "\n";
+            }
         }
 
-        if (son.size() > 0)
-        {
-            std::string tmp = son[0]->dump2str(str0);
-            str0 += " store ";
-            str0 += tmp;
-            str0 += ", @";
-            str0 += identtmp_num;
-            str0 += "\n";
-
-            (*current_table)[identtmp_num] = std::make_pair(std::atoi(tmp.c_str()), 0);
-        }
         else
         {
-            str0 += " store ";
-            str0 += std::to_string(varval);
-            str0 += ", @";
-            str0 += identtmp_num;
-            str0 += "\n";
+            if (glob_table.find("@"+identtmp_num) == glob_table.end())
+            {
+                str0 += " @";
+                str0 += identtmp_num;
+                str0 += " = alloc i32\n";
+            }
 
-            (*current_table)[identtmp_num] = std::make_pair(varval, 0);
+            if (son.size() > 0)
+            {
+                std::string tmp = son[0]->dump2str(str0);
+                str0 += " store ";
+                str0 += tmp;
+                str0 += ", @";
+                str0 += identtmp_num;
+                str0 += "\n";
+
+                (*current_table)[identtmp_num] = std::make_pair(std::atoi(tmp.c_str()), 0);
+            }
+            else
+            {
+                str0 += " store ";
+                str0 += std::to_string(varval);
+                str0 += ", @";
+                str0 += identtmp_num;
+                str0 += "\n";
+
+                (*current_table)[identtmp_num] = std::make_pair(varval, 0);
+            }
         }
 
         return "";
@@ -1385,4 +1609,12 @@ class InitVal: public BaseAST {
     {
         return son[0]->dump2str(str0);
     }
+};
+
+
+class myInitVal: public BaseAST {
+    public: 
+    myInitVal() { type = _myInitVal;    }
+
+    void Dump(std::string &str0) const override {}
 };
