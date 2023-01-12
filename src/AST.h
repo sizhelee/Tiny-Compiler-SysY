@@ -651,6 +651,8 @@ class UnaryExp : public BaseAST {
 
                 if (ptr->son[0]->isarray)
                 {
+                    std::string strtmp = ptr->son[0]->son[0]->dump2str(str0);
+
                     std::string identtmp = tmp1;
                     std::string identtmp_num;
                     int searchdep = symTabCnt;
@@ -679,7 +681,7 @@ class UnaryExp : public BaseAST {
                     str0 += " = getelemptr @";
                     str0 += identtmp_num;
                     str0 += ", ";
-                    str0 += std::to_string(val);
+                    str0 += strtmp;
                     str0 += "\n \%";
                     str0 += std::to_string(expNumCnt++);
                     str0 += " = load \%";
@@ -731,7 +733,7 @@ class UnaryExp : public BaseAST {
                     // for (auto iter = search_table->begin(); iter != search_table->end(); iter++)
                     // {
                     //     std::cout << (*iter).first << " ";
-                    //     std::cout << (*iter).second.first << std::endl;
+                    //     std::cout << (*iter).second.first << " " << (*iter).second.second << std::endl;
                     // }
 
                     if (searchdep == 0) // 在全局函数表中
