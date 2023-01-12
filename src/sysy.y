@@ -95,16 +95,7 @@ CompUnit
   }
   ;
 
-// FuncDef ::= FuncType IDENT '(' ')' Block;
-// 我们这里可以直接写 '(' 和 ')', 因为之前在 lexer 里已经处理了单个字符的情况
-// 解析完成后, 把这些符号的结果收集起来, 然后拼成一个新的字符串, 作为结果返回
-// $$ 表示非终结符的返回值, 我们可以通过给这个符号赋值的方法来返回结果
-// 你可能会问, FuncType, IDENT 之类的结果已经是字符串指针了
-// 为什么还要用 unique_ptr 接住它们, 然后再解引用, 把它们拼成另一个字符串指针呢
-// 因为所有的字符串指针都是我们 new 出来的, new 出来的内存一定要 delete
-// 否则会发生内存泄漏, 而 unique_ptr 这种智能指针可以自动帮我们 delete
-// 虽然此处你看不出用 unique_ptr 和手动 delete 的区别, 但当我们定义了 AST 之后
-// 这种写法会省下很多内存管理的负担
+
 FuncDef
   : BType IDENT '(' ')' Block {
     std::cout << "FuncDef -> FuncType IDENT ( ) Block" << std::endl;
@@ -152,25 +143,8 @@ FuncFParam
     ast->son.push_back($1);
     ast->ident = *unique_ptr<string>($2);
     $$ = ast;
-  };
-// 同上, 不再解释
-/* FuncType
-  : INT {
-    std::cout << "FuncType -> INT" << std::endl;
-    auto ast = new FuncTypeAST();
-    string str = "int";
-    ast->func_type = str;
-    $$ = ast;
   }
-  | VOID {
-    std::cout << "FuncType -> VOID" << std::endl;
-    auto ast = new FuncTypeAST();
-    string str = "void";
-    ast->func_type = str;
-    $$ = ast;
-  }
-  ; */
-
+  ;
 Block
   : '{' myBlockItem '}' {
     std::cout << "Block -> { myBlockItem }" << std::endl;
@@ -738,6 +712,24 @@ InitVal
     $$ = ast;
   }
   ;
+
+
+/* FuncType
+  : INT {
+    std::cout << "FuncType -> INT" << std::endl;
+    auto ast = new FuncTypeAST();
+    string str = "int";
+    ast->func_type = str;
+    $$ = ast;
+  }
+  | VOID {
+    std::cout << "FuncType -> VOID" << std::endl;
+    auto ast = new FuncTypeAST();
+    string str = "void";
+    ast->func_type = str;
+    $$ = ast;
+  }
+  ; */
 
 %%
 

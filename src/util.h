@@ -10,7 +10,7 @@
 extern FILE *yyout;
 extern std::string str1;
 extern std::map<koopa_raw_value_t, int> stackForInsts;
-extern std::map<koopa_raw_function_t, int> mapFuncToSp, mapFuncToRa;
+extern std::map<koopa_raw_function_t, int> func2sp, func2ra;
 
 void myPrint(std::string s, bool enter = true)
 {
@@ -23,9 +23,10 @@ void myPrint(std::string s, bool enter = true)
     }
 }
 
-void myPrologue(const koopa_raw_function_t &func)
+
+void myPrologue(const koopa_raw_function_t &func)   // 调用函数时处理栈指针和保存信息
 {
-    int sp = mapFuncToSp[func], ra = mapFuncToRa[func];
+    int sp = func2sp[func], ra = func2ra[func];
     if (sp != 0)
     {
         str1 += " addi sp, sp, " + std::to_string(-sp) + "\n";
@@ -35,7 +36,19 @@ void myPrologue(const koopa_raw_function_t &func)
 }
 
 
-void writeTo(const koopa_raw_value_t &value, std::string srcReg)
+void myEpilogue(const koopa_raw_function_t &func)   // 函数返回时处理栈指针和恢复现场
+{
+  int sp = func2sp[func], ra = func2ra[func];
+  if (sp != 0)
+  {
+    if (ra != 0)
+        str1 += " lw ra, "+std::to_string(sp-4) +"(sp)\n";
+    str1 += " addi sp, sp, " + std::to_string(func2sp[func]) + "\n";
+  }
+}
+
+
+void writeTo(const koopa_raw_value_t &value, std::string srcReg) // 结果写入指定位置
 {
     if(stackForInsts.find(value) == stackForInsts.end())
     {
@@ -59,18 +72,8 @@ void writeTo(const koopa_raw_value_t &value, std::string srcReg)
 }
 
 
-void myEpilogue(const koopa_raw_function_t &func){
-  int sp = mapFuncToSp[func], ra = mapFuncToRa[func];
-  if (sp != 0)
-  {
-    if (ra != 0)
-        str1 += " lw ra, "+std::to_string(sp-4) +"(sp)\n";
-    str1 += " addi sp, sp, " + std::to_string(mapFuncToSp[func]) + "\n";
-  }
-}
-
-
-void readFrom(const koopa_raw_value_t &value, std::string destReg){
+void readFrom(const koopa_raw_value_t &value, std::string destReg) // 从指定位置读入
+{
     if(stackForInsts.find(value) != stackForInsts.end())
     {
         str1 += " lw ";
@@ -105,11 +108,11 @@ void readFrom(const koopa_raw_value_t &value, std::string destReg){
 }
 
 
-void myPrintGlobalVar (const koopa_raw_value_t &value)
+void myPrintGlobalVar (const koopa_raw_value_t &value)  // 输出全局变量
 {
   str1 += " .data\n";
   std::string myGlobalName = value->name;
   myGlobalName.erase(0, 1);
-  str1 += " .global "+myGlobalName+"\n";
-  str1 += myGlobalName+":\n";
+  str1 += " .global " + myGlobalName + "\n";
+  str1 += myGlobalName + ":\n";
 }
