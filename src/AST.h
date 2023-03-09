@@ -43,7 +43,8 @@ class BaseAST {
     char op;
     bool isident = false;
     bool isarray = false;
-    bool isint = false, ret = false, isif = false, iswhile = false, isbreak = false, iscontinue = false;
+    bool isint = false, ret = false;
+    bool isif = false, iswhile = false, isbreak = false, iscontinue = false;
     std::string ident;
 
     BaseAST() = default;
